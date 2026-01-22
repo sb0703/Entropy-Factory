@@ -44,6 +44,21 @@ flutter run
 - `lib/services/` 存档与服务
 - `flutter_plan_v2.md` 设计与后续规划
 
+## 主要文件快速阅读
+- `lib/main.dart` 应用入口与初始化
+- `lib/game/game_controller.dart` 游戏主循环、模拟与存档调度
+- `lib/game/game_state.dart` 核心状态与序列化
+- `lib/game/game_math.dart` 产能/消耗计算与邻接加成
+- `lib/game/research_definitions.dart` 研究定义、效果与文案
+- `lib/game/skill_definitions.dart` 技能定义与效果
+- `lib/ui/home_shell.dart` 主框架、导航与全局 UI
+- `lib/ui/tabs/production_tab.dart` 生产与建造页面
+- `lib/ui/tabs/research_tab.dart` 研究页面（弹出购买）
+- `lib/ui/tabs/skill_tab.dart` 技能树页面（装配与详情）
+- `lib/ui/tabs/prestige_tab.dart` 升维与挑战页面
+- `lib/ui/widgets/resource_bar.dart` 资源条与警报提示
+- `lib/ui/widgets/layout_panel.dart` 设施布局与邻接网格
+
 ## 说明
 本项目用于原型验证与迭代开发，UI 与数值仍在持续调整中。
 
