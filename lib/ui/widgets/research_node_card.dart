@@ -19,15 +19,13 @@ class ResearchNodeCard extends StatelessWidget {
     // 通过状态颜色与标识文本提示研究可用性。
     final tone = _toneFor(node.status, node.canBuy, context);
     final statusLabel = _statusLabel(node);
-    final borderSide = isSelected
-        ? BorderSide(color: Theme.of(context).colorScheme.primary)
-        : BorderSide.none;
+    final cardColor = isSelected ? const Color(0xFF16233B) : null;
 
     return Card(
       clipBehavior: Clip.antiAlias,
+      color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: borderSide,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),

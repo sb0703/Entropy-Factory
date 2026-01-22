@@ -11,10 +11,6 @@ const int layoutRows = 4;
 const int layoutSize = layoutColumns * layoutRows;
 const String layoutUnlockResearchId = 'industry_layout';
 
-/// 娓告垙鏍稿績鐘舵€佺被
-///
-/// 鍖呭惈鎵€鏈夐渶瑕佹寔涔呭寲鐨勬父鎴忔暟鎹紝濡傝祫婧愭暟閲忋€佸缓绛戞暟閲忋€佽В閿佺殑鐮旂┒銆侀噷绋嬬绛夈€?
-/// 杩欐槸涓€涓笉鍙彉绫伙紝鎵€鏈夌殑鐘舵€佷慨鏀归兘浼氳繑鍥炰竴涓柊鐨勫疄渚嬨€?
 @immutable
 class GameState {
   const GameState({
@@ -46,87 +42,58 @@ class GameState {
     required this.overclockLevel,
   });
 
-  /// 褰撳墠鎷ユ湁鐨勮祫婧愭暟閲忔槧灏勮〃
   final Map<ResourceType, BigNumber> resources;
 
-  /// 褰撳墠鎷ユ湁鐨勫缓绛戞暟閲忔槧灏勮〃 (寤虹瓚ID -> 鏁伴噺)
   final Map<String, int> buildings;
 
-  /// 宸茶喘涔扮殑鐮旂┒椤圭洰 ID 闆嗗悎
   final Set<String> researchPurchased;
 
-  /// 宸茶揪鎴愮殑閲岀▼纰?ID 闆嗗悎
   final Set<String> milestonesAchieved;
 
-  /// 宸茶喘涔扮殑甯告暟鍗囩骇鍙婂叾绛夌骇 (鍗囩骇ID -> 绛夌骇)
   final Map<String, int> constantUpgrades;
 
-  /// 娓告垙鏃ュ織璁板綍
   final List<GameLogEntry> logEntries;
 
-  /// 褰撳墠姝ｅ湪杩涜鐨勬寫鎴樺崌缁存ā寮?ID
   final String? activeChallengeId;
 
-  /// 宸插畬鎴愮殑鎸戞垬鍗囩淮 ID 闆嗗悎
   final Set<String> completedChallenges;
 
-  /// 宸解鎖的永久解鎖 ID 闆嗗悎
   final Set<String> permanentUnlocks;
 
-  /// 本轮变体词条 ID 列表
   final List<String> runModifiers;
 
-  /// 可用技能点
   final int skillPoints;
 
-  /// 已解锁技能 ID 集合
   final Set<String> unlockedSkills;
 
-  /// 已装配技能 ID（含主动与被动）
   final List<String> equippedSkills;
 
-  /// 资源脉冲冷却结束时间
   final int pulseCooldownEndsAtMs;
 
-  /// 纰庣墖杞崲涓洪浂浠剁殑鍒嗛厤姣斾緥 (0.0 - 1.0)
-  /// 鎺у埗鏈夊灏戜骇鐢熺殑纰庣墖浼氳鑷姩閫佸幓杞崲銆?
   final double shardToPartRatio;
 
-  /// 鏄惁淇濈暀鏈€灏忕鐗囧偍澶?
-  /// 濡傛灉涓?true锛岃浆鎹㈣繃绋嬩笉浼氭秷鑰椾綆浜?[shardReserveMin] 鐨勭鐗囥€?
   final bool keepShardReserve;
 
-  /// 鑳介噺鍒嗛厤缁欏悎鎴愮郴缁熺殑姣斾緥 (0.0 - 1.0)
   final double energyToSynthesisRatio;
 
-  /// 鏈€灏忕鐗囧偍澶囬噺
   final double shardReserveMin;
 
-  /// 鏃堕棿鎵洸鎶€鑳界粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int timeWarpEndsAtMs;
 
-  /// 鏃堕棿鎵洸鎶€鑳藉喎鍗寸粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int timeWarpCooldownEndsAtMs;
 
-  /// 鏃堕棿鎵洸鎶€鑳界瓑绾?
   final int timeWarpLevel;
 
-  /// 鑳介噺鍒嗛厤浼樺厛绾?
   final EnergyPriorityMode energyPriorityMode;
 
-  /// 璁炬柦甯冨眬鏍硷紙鎸夎灞曞紑鐨勫缓绛?ID锛?
   final List<String?> layoutGrid;
 
-  /// 鎵嬪姩瓒呴鎶€鑳界粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int overclockEndsAtMs;
 
-  /// 鎵嬪姩瓒呴鎶€鑳藉喎鍗寸粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int overclockCooldownEndsAtMs;
 
-  /// 鎵嬪姩瓒呴鎶€鑳界瓑绾?
   final int overclockLevel;
 
-  /// 鑾峰彇鎸囧畾绫诲瀷璧勬簮鐨勬暟閲忥紝榛樿涓?0
   BigNumber resource(ResourceType type) => resources[type] ?? BigNumber.zero;
 
   bool get isLayoutUnlocked {
@@ -137,10 +104,8 @@ class GameState {
     return resource(type).toDouble(max: max);
   }
 
-  /// 鑾峰彇鎸囧畾寤虹瓚鐨勬暟閲忥紝榛樿涓?0
   int buildingCount(String id) => buildings[id] ?? 0;
 
-  /// 鍒涘缓褰撳墠鐘舵€佺殑鍓湰锛屽苟鏍规嵁闇€瑕佷慨鏀归儴鍒嗗睘鎬?
   GameState copyWith({
     Map<ResourceType, BigNumber>? resources,
     Map<String, int>? buildings,
@@ -201,11 +166,6 @@ class GameState {
     );
   }
 
-  /// 娣诲姞涓€鏉℃棩蹇楄褰?
-  ///
-  /// [title] 鏃ュ織鏍囬
-  /// [detail] 鏃ュ織璇︽儏
-  /// [maxEntries] 淇濈暀鐨勬渶澶ф棩蹇楁潯鏁帮紝榛樿涓?50
   GameState addLogEntry(
     String title,
     String detail, {
@@ -225,7 +185,6 @@ class GameState {
     return copyWith(logEntries: trimmed);
   }
 
-  /// 灏嗘父鎴忕姸鎬佸簭鍒楀寲涓?JSON Map
   Map<String, dynamic> toJson() {
     return {
       'resources': {
@@ -259,7 +218,6 @@ class GameState {
     };
   }
 
-  /// 浠?JSON Map 鍙嶅簭鍒楀寲娓告垙鐘舵€?
   factory GameState.fromJson(Map<String, dynamic> json) {
     final defaults = GameState.initial();
     
@@ -439,7 +397,6 @@ class GameState {
     );
   }
 
-  /// 鍒濆鍖栨父鎴忕姸鎬侊紙鏂版父鎴忥級
   factory GameState.initial() {
     return GameState(
       resources: {
@@ -486,9 +443,6 @@ class GameState {
   }
 }
 
-/// 娓告垙鏃ュ織鏉＄洰绫?
-///
-/// 璁板綍娓告垙涓殑閲嶈浜嬩欢锛屽杈炬垚閲岀▼纰戙€佸畬鎴愮爺绌剁瓑銆?
 @immutable
 class GameLogEntry {
   const GameLogEntry({
@@ -497,16 +451,12 @@ class GameLogEntry {
     required this.timeMs,
   });
 
-  /// 鏍囬
   final String title;
   
-  /// 璇︽儏鍐呭
   final String detail;
   
-  /// 鍙戠敓鏃堕棿锛堟绉掓椂闂存埑锛?
   final int timeMs;
 
-  /// 搴忓垪鍖栦负 JSON
   Map<String, dynamic> toJson() {
     return {
       'title': title,
@@ -515,7 +465,6 @@ class GameLogEntry {
     };
   }
 
-  /// 鍙嶅簭鍒楀寲
   factory GameLogEntry.fromJson(Map<String, dynamic> json) {
     return GameLogEntry(
       title: json['title']?.toString() ?? '',

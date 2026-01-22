@@ -46,13 +46,14 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/icon.png" # 你的图片路径
   min_sdk_android: 21 # 加上这个防止报错
-# --- 新增下面这两行关键配置 ---
+
   # 1. 设置自适应图标的背景颜色
   # 因为你的图片是深色的，把背景设为黑色 (#000000) 就能完美融合，
   # 看起来就像是占满了一样。
-  adaptive_icon_background: "3C444F" 
+  adaptive_icon_background: "#3C444F" 
   # 2. 再次指定前景图 (通常用同一张，或者用一张去掉了黑色背景的透明 PNG)
   adaptive_icon_foreground: "assets/icon.png"
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

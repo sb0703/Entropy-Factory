@@ -178,31 +178,34 @@ class _RunModifierTile extends StatelessWidget {
     if (modifier == null) {
       return const SizedBox.shrink();
     }
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1B2D),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF22324A)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            modifier!.title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            modifier!.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF8FA3BF),
-                ),
-          ),
-        ],
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1B2D),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF22324A)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              modifier!.title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              modifier!.description,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF8FA3BF),
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }

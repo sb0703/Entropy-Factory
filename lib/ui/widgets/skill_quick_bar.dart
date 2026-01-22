@@ -76,10 +76,10 @@ class _SkillQuickButton extends StatelessWidget {
     final canUse = !isActive && !isCooling;
     final progress = _progressValue(runtime);
     final status = isActive
-        ? '?? ${_formatDuration(runtime.activeRemainingMs)}'
+        ? '持续 ${_formatDuration(runtime.activeRemainingMs)}'
         : (isCooling
-            ? '?? ${_formatDuration(runtime.cooldownRemainingMs)}'
-            : '??');
+            ? '冷却 ${_formatDuration(runtime.cooldownRemainingMs)}'
+            : '就绪');
 
     return SizedBox(
       width: 140,
@@ -133,7 +133,7 @@ class _SkillQuickButton extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: canUse ? () => controller.activateSkill(skill.id) : null,
-                  child: const Text('??'),
+                  child: const Text('启用'),
                 ),
               ),
             ],
