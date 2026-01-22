@@ -239,9 +239,13 @@ final gameUiProvider = Provider<GameUiState>((ref) {
   final rates = GameRates.fromState(state, effects, constants);
   final nowMs = DateTime.now().millisecondsSinceEpoch;
   final timeWarpMultiplier = state.timeWarpEndsAtMs > nowMs ? 2.0 : 1.0;
-  final adjustedRates = timeWarpMultiplier == 1.0
+  final overclockActive = state.overclockEndsAtMs > nowMs;
+  var adjustedRates = timeWarpMultiplier == 1.0
       ? rates
       : _scaleRates(rates, timeWarpMultiplier);
+  if (overclockActive) {
+    adjustedRates = _applyOverclock(adjustedRates, state);
+  }
   return GameUiState.fromState(state, adjustedRates, effects);
 });
 
@@ -256,6 +260,23 @@ GameRates _scaleRates(GameRates rates, double multiplier) {
     shardConvertiblePerSec: rates.shardConvertiblePerSec * multiplier,
     partsToBlueprintPerSec: rates.partsToBlueprintPerSec * multiplier,
     energyNeedPerSec: rates.energyNeedPerSec * multiplier,
+    partBottleneck: rates.partBottleneck,
+    energyOverload: rates.energyOverload,
+  );
+}
+
+GameRates _applyOverclock(GameRates rates, GameState state) {
+  final multiplier = 1.4 + state.overclockLevel * 0.15;
+  return GameRates(
+    shardPerSec: rates.shardPerSec,
+    partGainPerSec: rates.partGainPerSec * multiplier,
+    partUsePerSec: rates.partUsePerSec * multiplier,
+    blueprintPerSec: rates.blueprintPerSec * multiplier,
+    energyPerSec: rates.energyPerSec,
+    synthesisEfficiency: rates.synthesisEfficiency,
+    shardConvertiblePerSec: rates.shardConvertiblePerSec * multiplier,
+    partsToBlueprintPerSec: rates.partsToBlueprintPerSec * multiplier,
+    energyNeedPerSec: rates.energyNeedPerSec,
     partBottleneck: rates.partBottleneck,
     energyOverload: rates.energyOverload,
   );

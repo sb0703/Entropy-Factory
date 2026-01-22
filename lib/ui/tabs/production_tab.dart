@@ -8,6 +8,7 @@ import '../../game/game_ui_state.dart';
 import '../../game/game_state.dart';
 import '../widgets/building_card.dart';
 import '../widgets/law_progress_card.dart';
+import '../widgets/layout_panel.dart';
 import '../widgets/rate_summary_card.dart';
 import '../widgets/ratio_panel.dart';
 import '../effects/particle_layer.dart';
@@ -27,12 +28,18 @@ class ProductionTab extends ConsumerWidget {
     final laws = gameState.resource(ResourceType.law);
     final constants = gameState.resource(ResourceType.constant);
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final durationMs = controller.timeWarpDurationMs(gameState);
-    final cooldownMs = controller.timeWarpCooldownMs(gameState);
-    final activeRemainingMs =
+    final timeWarpDurationMs = controller.timeWarpDurationMs(gameState);
+    final timeWarpCooldownMs = controller.timeWarpCooldownMs(gameState);
+    final timeWarpActiveRemainingMs =
         math.max(0, gameState.timeWarpEndsAtMs - nowMs);
-    final cooldownRemainingMs =
+    final timeWarpCooldownRemainingMs =
         math.max(0, gameState.timeWarpCooldownEndsAtMs - nowMs);
+    final overclockDurationMs = controller.overclockDurationMs(gameState);
+    final overclockCooldownMs = controller.overclockCooldownMs(gameState);
+    final overclockActiveRemainingMs =
+        math.max(0, gameState.overclockEndsAtMs - nowMs);
+    final overclockCooldownRemainingMs =
+        math.max(0, gameState.overclockCooldownEndsAtMs - nowMs);
 
     // 根据宽度切换双栏/单栏布局，避免小屏拥挤。
     return LayoutBuilder(
@@ -63,11 +70,14 @@ class ProductionTab extends ConsumerWidget {
                         laws: laws,
                       ),
                       const SizedBox(height: 16),
-                      _ActiveSkillCard(
-                        activeRemainingMs: activeRemainingMs,
-                        cooldownRemainingMs: cooldownRemainingMs,
-                        durationMs: durationMs,
-                        cooldownMs: cooldownMs,
+                      _SkillCard(
+                        title: '时间扭曲',
+                        description: '游戏速度 x2',
+                        icon: Icons.timelapse,
+                        activeRemainingMs: timeWarpActiveRemainingMs,
+                        cooldownRemainingMs: timeWarpCooldownRemainingMs,
+                        durationMs: timeWarpDurationMs,
+                        cooldownMs: timeWarpCooldownMs,
                         level: gameState.timeWarpLevel,
                         maxLevel: controller.timeWarpMaxLevel(),
                         upgradeCost:
@@ -76,8 +86,27 @@ class ProductionTab extends ConsumerWidget {
                         onActivate: controller.activateTimeWarp,
                         onUpgrade: controller.buyTimeWarpUpgrade,
                       ),
+                      const SizedBox(height: 12),
+                      _SkillCard(
+                        title: '手动超频',
+                        description: '转换与合成效率提升',
+                        icon: Icons.flash_on,
+                        activeRemainingMs: overclockActiveRemainingMs,
+                        cooldownRemainingMs: overclockCooldownRemainingMs,
+                        durationMs: overclockDurationMs,
+                        cooldownMs: overclockCooldownMs,
+                        level: gameState.overclockLevel,
+                        maxLevel: controller.overclockMaxLevel(),
+                        upgradeCost:
+                            controller.overclockUpgradeCost(gameState.overclockLevel),
+                        availableConstants: constants,
+                        onActivate: controller.activateOverclock,
+                        onUpgrade: controller.buyOverclockUpgrade,
+                      ),
                       const SizedBox(height: 16),
                       const RatioPanel(),
+                      const SizedBox(height: 16),
+                      const LayoutPanel(),
                     ],
                   ),
                 ),
@@ -122,11 +151,14 @@ class ProductionTab extends ConsumerWidget {
               laws: laws,
             ),
             const SizedBox(height: 16),
-            _ActiveSkillCard(
-              activeRemainingMs: activeRemainingMs,
-              cooldownRemainingMs: cooldownRemainingMs,
-              durationMs: durationMs,
-              cooldownMs: cooldownMs,
+            _SkillCard(
+              title: '时间扭曲',
+              description: '游戏速度 x2',
+              icon: Icons.timelapse,
+              activeRemainingMs: timeWarpActiveRemainingMs,
+              cooldownRemainingMs: timeWarpCooldownRemainingMs,
+              durationMs: timeWarpDurationMs,
+              cooldownMs: timeWarpCooldownMs,
               level: gameState.timeWarpLevel,
               maxLevel: controller.timeWarpMaxLevel(),
               upgradeCost:
@@ -134,6 +166,23 @@ class ProductionTab extends ConsumerWidget {
               availableConstants: constants,
               onActivate: controller.activateTimeWarp,
               onUpgrade: controller.buyTimeWarpUpgrade,
+            ),
+            const SizedBox(height: 12),
+            _SkillCard(
+              title: '手动超频',
+              description: '转换与合成效率提升',
+              icon: Icons.flash_on,
+              activeRemainingMs: overclockActiveRemainingMs,
+              cooldownRemainingMs: overclockCooldownRemainingMs,
+              durationMs: overclockDurationMs,
+              cooldownMs: overclockCooldownMs,
+              level: gameState.overclockLevel,
+              maxLevel: controller.overclockMaxLevel(),
+              upgradeCost:
+                  controller.overclockUpgradeCost(gameState.overclockLevel),
+              availableConstants: constants,
+              onActivate: controller.activateOverclock,
+              onUpgrade: controller.buyOverclockUpgrade,
             ),
             const SizedBox(height: 16),
             for (final building in state.buildings) ...[
@@ -148,6 +197,8 @@ class ProductionTab extends ConsumerWidget {
               const SizedBox(height: 12),
             ],
             const RatioPanel(),
+            const SizedBox(height: 16),
+            const LayoutPanel(),
           ],
         );
       },
@@ -155,8 +206,11 @@ class ProductionTab extends ConsumerWidget {
   }
 }
 
-class _ActiveSkillCard extends StatelessWidget {
-  const _ActiveSkillCard({
+class _SkillCard extends StatelessWidget {
+  const _SkillCard({
+    required this.title,
+    required this.description,
+    required this.icon,
     required this.activeRemainingMs,
     required this.cooldownRemainingMs,
     required this.durationMs,
@@ -169,6 +223,9 @@ class _ActiveSkillCard extends StatelessWidget {
     required this.onUpgrade,
   });
 
+  final String title;
+  final String description;
+  final IconData icon;
   final int activeRemainingMs;
   final int cooldownRemainingMs;
   final int durationMs;
@@ -222,12 +279,12 @@ class _ActiveSkillCard extends StatelessWidget {
                                 : const Color(0xFF8BE4B4)),
                       ),
                     ),
-                    const Icon(Icons.timelapse, color: Color(0xFF8FA3BF)),
+                    Icon(icon, color: const Color(0xFF8FA3BF)),
                   ],
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  '主动技能：时间扭曲',
+                  '主动技能：$title',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -243,7 +300,7 @@ class _ActiveSkillCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '持续 ${_formatDuration(durationMs)}，游戏速度 x2（冷却 ${_formatDuration(cooldownMs)}）',
+              '持续 ${_formatDuration(durationMs)}，$description（冷却 ${_formatDuration(cooldownMs)}）',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF8FA3BF),
                   ),

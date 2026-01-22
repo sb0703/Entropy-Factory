@@ -23,6 +23,14 @@ class GameController extends StateNotifier<GameState> {
   static const double _timeWarpUpgradeBaseCost = 5;
   static const double _timeWarpUpgradeCostGrowth = 1.6;
   static const int _timeWarpMaxLevel = 6;
+  static const int _overclockDurationMs = 20000;
+  static const int _overclockCooldownMs = 3 * 60 * 1000;
+  static const int _overclockDurationPerLevelMs = 4000;
+  static const int _overclockCooldownReductionPerLevelMs = 15000;
+  static const int _overclockCooldownMinMs = 90 * 1000;
+  static const double _overclockUpgradeBaseCost = 4;
+  static const double _overclockUpgradeCostGrowth = 1.5;
+  static const int _overclockMaxLevel = 6;
 
   GameController() : super(GameState.initial()) {
     // 固定节拍推进游戏状态，保持数值稳定。
@@ -53,16 +61,23 @@ class GameController extends StateNotifier<GameState> {
         partSynthesisCapacityPerSec(state, effects) *
         constants.productionMultiplier;
     final energyNeed = partSynthesisEnergyNeedPerSec(state, effects);
-    final energyAvailableBase =
-        baseEnergyProd * state.energyToSynthesisRatio;
+    final energySplit = effectiveEnergySplit(
+      state: state,
+      energyProd: baseEnergyProd,
+      energyNeed: energyNeed,
+    );
+    final energyAvailableBase = baseEnergyProd * energySplit;
     final overloadFactor = energyNeed <= 0
         ? 1.0
         : math.min(1.0, energyAvailableBase / energyNeed);
 
     final shardProd = baseShardProd * overloadFactor;
     final energyProd = baseEnergyProd * overloadFactor;
-    final shardConvertCap = baseShardConvertCap * overloadFactor;
-    final partSynthesisCap = basePartSynthesisCap * overloadFactor;
+    final overclockBoost = _isOverclockActive(state, nowMs)
+        ? overclockMultiplier(state)
+        : 1.0;
+    final shardConvertCap = baseShardConvertCap * overloadFactor * overclockBoost;
+    final partSynthesisCap = basePartSynthesisCap * overloadFactor * overclockBoost;
 
     // 读取资源快照，避免中途被更新影响计算。
     var shards = state.resource(ResourceType.shard);
@@ -89,8 +104,7 @@ class GameController extends StateNotifier<GameState> {
         shardsPerPart *
         effects.shardToPartEfficiencyMultiplier;
 
-    final energyAvailable =
-        energyProd * state.energyToSynthesisRatio * effectiveDt;
+    final energyAvailable = energyProd * energySplit * effectiveDt;
     final energyNeeded = energyNeed * effectiveDt;
     final efficiency = energyNeeded <= 0
         ? 0.0
@@ -225,6 +239,57 @@ class GameController extends StateNotifier<GameState> {
     );
   }
 
+  void setEnergyPriorityMode(EnergyPriorityMode mode) {
+    state = state.copyWith(energyPriorityMode: mode);
+  }
+
+  void placeBuildingInLayout(String buildingId, int index) {
+    if (index < 0 || index >= state.layoutGrid.length) {
+      return;
+    }
+    if (!buildingById.containsKey(buildingId)) {
+      return;
+    }
+    final layout = List<String?>.from(state.layoutGrid);
+    final placedCounts = _placedCounts(layout);
+    final current = layout[index];
+    if (current == buildingId) {
+      return;
+    }
+    if (current != null) {
+      placedCounts[current] = math.max(0, (placedCounts[current] ?? 1) - 1);
+      layout[index] = null;
+    }
+    final totalOwned = state.buildingCount(buildingId);
+    final used = placedCounts[buildingId] ?? 0;
+    if (totalOwned - used <= 0) {
+      state = state.copyWith(layoutGrid: layout);
+      return;
+    }
+    layout[index] = buildingId;
+    state = state.copyWith(layoutGrid: layout);
+  }
+
+  void clearLayoutSlot(int index) {
+    if (index < 0 || index >= state.layoutGrid.length) {
+      return;
+    }
+    final layout = List<String?>.from(state.layoutGrid);
+    layout[index] = null;
+    state = state.copyWith(layoutGrid: layout);
+  }
+
+  Map<String, int> _placedCounts(List<String?> layout) {
+    final counts = <String, int>{};
+    for (final id in layout) {
+      if (id == null) {
+        continue;
+      }
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
+  }
+
   void buyResearch(String researchId) {
     // 校验前置研究与蓝图成本，成功后解锁效果。
     final def = researchById[researchId];
@@ -295,6 +360,59 @@ class GameController extends StateNotifier<GameState> {
       timeWarpCooldownEndsAtMs: nowMs + cooldownMs,
     );
     state = state.addLogEntry('主动技能', '时间扭曲启动');
+  }
+
+  void activateOverclock() {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs < state.overclockCooldownEndsAtMs) {
+      return;
+    }
+    final durationMs = overclockDurationMs(state);
+    final cooldownMs = overclockCooldownMs(state);
+    state = state.copyWith(
+      overclockEndsAtMs: nowMs + durationMs,
+      overclockCooldownEndsAtMs: nowMs + cooldownMs,
+    );
+    state = state.addLogEntry('主动技能', '手动超频启动');
+  }
+
+  int overclockDurationMs(GameState state) {
+    return _overclockDurationMs +
+        state.overclockLevel * _overclockDurationPerLevelMs;
+  }
+
+  int overclockCooldownMs(GameState state) {
+    final reduced = _overclockCooldownMs -
+        state.overclockLevel * _overclockCooldownReductionPerLevelMs;
+    return math.max(_overclockCooldownMinMs, reduced);
+  }
+
+  int overclockMaxLevel() => _overclockMaxLevel;
+
+  double overclockMultiplier(GameState state) {
+    return 1.4 + state.overclockLevel * 0.15;
+  }
+
+  double overclockUpgradeCost(int level) {
+    return _overclockUpgradeBaseCost *
+        math.pow(_overclockUpgradeCostGrowth, level).toDouble();
+  }
+
+  void buyOverclockUpgrade() {
+    final level = state.overclockLevel;
+    if (level >= _overclockMaxLevel) {
+      return;
+    }
+    final cost = overclockUpgradeCost(level);
+    final currency = state.resource(ResourceType.constant);
+    if (currency < cost) {
+      return;
+    }
+    state = state.copyWith(
+      resources: {...state.resources, ResourceType.constant: currency - cost},
+      overclockLevel: level + 1,
+    );
+    state = state.addLogEntry('技能强化', '手动超频 Lv.${level + 1}');
   }
 
   int timeWarpDurationMs(GameState state) {
@@ -405,8 +523,12 @@ class GameController extends StateNotifier<GameState> {
         partSynthesisCapacityPerSec(state, effects) *
         constants.productionMultiplier;
     final energyNeed = partSynthesisEnergyNeedPerSec(state, effects);
-    final energyAvailableBase =
-        baseEnergyProd * state.energyToSynthesisRatio;
+    final energySplit = effectiveEnergySplit(
+      state: state,
+      energyProd: baseEnergyProd,
+      energyNeed: energyNeed,
+    );
+    final energyAvailableBase = baseEnergyProd * energySplit;
     final overloadFactor = energyNeed <= 0
         ? 1.0
         : math.min(1.0, energyAvailableBase / energyNeed);
@@ -442,8 +564,7 @@ class GameController extends StateNotifier<GameState> {
 
     // 研究解锁后允许离线合成蓝图。
     if (offlineSynthesisUnlocked(state)) {
-      final energyAvailable =
-          energyProd * state.energyToSynthesisRatio * effectiveSeconds;
+      final energyAvailable = energyProd * energySplit * effectiveSeconds;
       final energyNeeded = energyNeed * effectiveSeconds;
       final efficiency = energyNeeded <= 0
           ? 0.0
@@ -507,6 +628,10 @@ class GameController extends StateNotifier<GameState> {
 
   bool _isTimeWarpActive(GameState state, int nowMs) {
     return state.timeWarpEndsAtMs > nowMs;
+  }
+
+  bool _isOverclockActive(GameState state, int nowMs) {
+    return state.overclockEndsAtMs > nowMs;
   }
 }
 

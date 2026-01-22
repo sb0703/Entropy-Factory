@@ -2,6 +2,12 @@ import 'package:flutter/foundation.dart';
 
 enum ResourceType { shard, part, blueprint, law, constant }
 
+enum EnergyPriorityMode { synthesisFirst, conversionFirst }
+
+const int layoutColumns = 4;
+const int layoutRows = 4;
+const int layoutSize = layoutColumns * layoutRows;
+
 /// 游戏核心状态类
 ///
 /// 包含所有需要持久化的游戏数据，如资源数量、建筑数量、解锁的研究、里程碑等。
@@ -22,6 +28,11 @@ class GameState {
     required this.timeWarpEndsAtMs,
     required this.timeWarpCooldownEndsAtMs,
     required this.timeWarpLevel,
+    required this.energyPriorityMode,
+    required this.layoutGrid,
+    required this.overclockEndsAtMs,
+    required this.overclockCooldownEndsAtMs,
+    required this.overclockLevel,
   });
 
   /// 当前拥有的资源数量映射表
@@ -65,6 +76,21 @@ class GameState {
   /// 时间扭曲技能等级
   final int timeWarpLevel;
 
+  /// 能量分配优先级
+  final EnergyPriorityMode energyPriorityMode;
+
+  /// 设施布局格（按行展开的建筑 ID）
+  final List<String?> layoutGrid;
+
+  /// 手动超频技能结束时间（毫秒时间戳）
+  final int overclockEndsAtMs;
+
+  /// 手动超频技能冷却结束时间（毫秒时间戳）
+  final int overclockCooldownEndsAtMs;
+
+  /// 手动超频技能等级
+  final int overclockLevel;
+
   /// 获取指定类型资源的数量，默认为 0
   double resource(ResourceType type) => resources[type] ?? 0;
 
@@ -86,6 +112,11 @@ class GameState {
     int? timeWarpEndsAtMs,
     int? timeWarpCooldownEndsAtMs,
     int? timeWarpLevel,
+    EnergyPriorityMode? energyPriorityMode,
+    List<String?>? layoutGrid,
+    int? overclockEndsAtMs,
+    int? overclockCooldownEndsAtMs,
+    int? overclockLevel,
   }) {
     return GameState(
       resources: resources ?? this.resources,
@@ -102,6 +133,12 @@ class GameState {
       timeWarpCooldownEndsAtMs:
           timeWarpCooldownEndsAtMs ?? this.timeWarpCooldownEndsAtMs,
       timeWarpLevel: timeWarpLevel ?? this.timeWarpLevel,
+      energyPriorityMode: energyPriorityMode ?? this.energyPriorityMode,
+      layoutGrid: layoutGrid ?? this.layoutGrid,
+      overclockEndsAtMs: overclockEndsAtMs ?? this.overclockEndsAtMs,
+      overclockCooldownEndsAtMs:
+          overclockCooldownEndsAtMs ?? this.overclockCooldownEndsAtMs,
+      overclockLevel: overclockLevel ?? this.overclockLevel,
     );
   }
 
@@ -147,6 +184,11 @@ class GameState {
       'timeWarpEndsAtMs': timeWarpEndsAtMs,
       'timeWarpCooldownEndsAtMs': timeWarpCooldownEndsAtMs,
       'timeWarpLevel': timeWarpLevel,
+      'energyPriorityMode': energyPriorityMode.name,
+      'layoutGrid': layoutGrid,
+      'overclockEndsAtMs': overclockEndsAtMs,
+      'overclockCooldownEndsAtMs': overclockCooldownEndsAtMs,
+      'overclockLevel': overclockLevel,
     };
   }
 
@@ -223,6 +265,20 @@ class GameState {
       }
     }
 
+    final layoutGrid = <String?>[];
+    final layoutList = json['layoutGrid'];
+    if (layoutList is List) {
+      for (final entry in layoutList) {
+        layoutGrid.add(entry?.toString());
+      }
+    }
+    if (layoutGrid.length < layoutSize) {
+      layoutGrid.addAll(List<String?>.filled(
+        layoutSize - layoutGrid.length,
+        null,
+      ));
+    }
+
     return GameState(
       resources: resources,
       buildings: buildings.isEmpty ? defaults.buildings : buildings,
@@ -249,6 +305,21 @@ class GameState {
               defaults.timeWarpCooldownEndsAtMs,
       timeWarpLevel:
           (json['timeWarpLevel'] as num?)?.toInt() ?? defaults.timeWarpLevel,
+      energyPriorityMode: EnergyPriorityMode.values.firstWhere(
+        (mode) => mode.name == json['energyPriorityMode'],
+        orElse: () => defaults.energyPriorityMode,
+      ),
+      layoutGrid:
+          layoutGrid.isEmpty ? defaults.layoutGrid : layoutGrid,
+      overclockEndsAtMs:
+          (json['overclockEndsAtMs'] as num?)?.toInt() ??
+              defaults.overclockEndsAtMs,
+      overclockCooldownEndsAtMs:
+          (json['overclockCooldownEndsAtMs'] as num?)?.toInt() ??
+              defaults.overclockCooldownEndsAtMs,
+      overclockLevel:
+          (json['overclockLevel'] as num?)?.toInt() ??
+              defaults.overclockLevel,
     );
   }
 
@@ -265,6 +336,8 @@ class GameState {
       buildings: const {
         'miner': 1,
         'drill': 0,
+        'core_rig': 0,
+        'orbital_array': 0,
         'compressor': 0,
         'furnace': 0,
         'fusion': 0,
@@ -280,6 +353,11 @@ class GameState {
       timeWarpEndsAtMs: 0,
       timeWarpCooldownEndsAtMs: 0,
       timeWarpLevel: 0,
+      energyPriorityMode: EnergyPriorityMode.synthesisFirst,
+      layoutGrid: List<String?>.filled(layoutSize, null),
+      overclockEndsAtMs: 0,
+      overclockCooldownEndsAtMs: 0,
+      overclockLevel: 0,
     );
   }
 }

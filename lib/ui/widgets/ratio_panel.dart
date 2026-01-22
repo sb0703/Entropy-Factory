@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../game/constant_upgrades.dart';
 import '../../game/game_controller.dart';
 import '../../game/game_math.dart';
+import '../../game/game_state.dart';
 import '../../game/milestone_definitions.dart';
 import '../../game/research_definitions.dart';
 
@@ -18,8 +19,15 @@ class RatioPanel extends ConsumerWidget {
         computeResearchEffects(state).combine(computeMilestoneEffects(state));
     final constants = computeConstantEffects(state);
     final rates = GameRates.fromState(state, effects, constants);
-    final energyAvailable =
-        rates.energyPerSec * state.energyToSynthesisRatio;
+    final baseEnergyProd =
+        energyProductionPerSec(state, effects) * constants.productionMultiplier;
+    final energyNeed = partSynthesisEnergyNeedPerSec(state, effects);
+    final energySplit = effectiveEnergySplit(
+      state: state,
+      energyProd: baseEnergyProd,
+      energyNeed: energyNeed,
+    );
+    final energyAvailable = rates.energyPerSec * energySplit;
 
     // 管理碎片/能量分配的控制面板。
     return Card(
@@ -64,6 +72,11 @@ class RatioPanel extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF8FA3BF),
                   ),
+            ),
+            const SizedBox(height: 12),
+            _PriorityToggle(
+              mode: state.energyPriorityMode,
+              onChanged: controller.setEnergyPriorityMode,
             ),
             const SizedBox(height: 12),
             _EnergyFlowMeter(
@@ -120,6 +133,46 @@ class _SliderRow extends StatelessWidget {
           max: 0.9,
           divisions: 8,
           onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _PriorityToggle extends StatelessWidget {
+  const _PriorityToggle({
+    required this.mode,
+    required this.onChanged,
+  });
+
+  final EnergyPriorityMode mode;
+  final ValueChanged<EnergyPriorityMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '能量优先级',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 6),
+        SegmentedButton<EnergyPriorityMode>(
+          segments: const [
+            ButtonSegment(
+              value: EnergyPriorityMode.synthesisFirst,
+              label: Text('合成优先'),
+            ),
+            ButtonSegment(
+              value: EnergyPriorityMode.conversionFirst,
+              label: Text('转换优先'),
+            ),
+          ],
+          selected: {mode},
+          onSelectionChanged: (value) => onChanged(value.first),
         ),
       ],
     );

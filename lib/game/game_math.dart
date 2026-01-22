@@ -89,8 +89,14 @@ class GameRates {
         constants.productionMultiplier;
     final energyNeed = partSynthesisEnergyNeedPerSec(state, effects);
 
+    // 根据优先级策略调整能量分配比例。
+    final energySplit = effectiveEnergySplit(
+      state: state,
+      energyProd: baseEnergyProd,
+      energyNeed: energyNeed,
+    );
     // 能量过载时，对全局产出施加惩罚
-    final energyAvailableBase = baseEnergyProd * state.energyToSynthesisRatio;
+    final energyAvailableBase = baseEnergyProd * energySplit;
     final overloadFactor = energyNeed <= 0
         ? 1.0
         : math.min(1.0, energyAvailableBase / energyNeed);
@@ -128,7 +134,7 @@ class GameRates {
 
     // 计算能量效率
     // 能量主要用于零件合成蓝图的过程
-    final energyAvailable = energyProd * state.energyToSynthesisRatio;
+    final energyAvailable = energyProd * energySplit;
     final efficiency = energyNeed <= 0
         ? 0.0
         : math.min(1.0, energyAvailable / energyNeed);
@@ -216,13 +222,118 @@ double partSynthesisEnergyNeedPerSec(GameState state, ResearchEffects effects) {
 /// 遍历所有建筑定义，累加指定类型建筑的基础产出 * 当前数量。
 double _sumOutput(GameState state, BuildingType type) {
   var total = 0.0;
+  final layout = state.layoutGrid;
+  final hasLayout = layout.isNotEmpty;
+
   for (final def in buildingDefinitions) {
     if (def.type != type) {
       continue;
     }
-    total += def.baseOutputPerSec * state.buildingCount(def.id);
+    final owned = state.buildingCount(def.id);
+    if (owned <= 0) {
+      continue;
+    }
+    if (!hasLayout) {
+      total += def.baseOutputPerSec * owned;
+      continue;
+    }
+
+    var placed = 0;
+    for (var i = 0; i < layout.length; i++) {
+      final placedId = layout[i];
+      if (placedId == def.id) {
+        placed += 1;
+        final bonus = _adjacencyBonus(layout, i, def.type);
+        total += def.baseOutputPerSec * bonus;
+      }
+    }
+    final remaining = math.max(0, owned - placed);
+    if (remaining > 0) {
+      total += def.baseOutputPerSec * remaining;
+    }
   }
+
   return total;
+}
+
+double _adjacencyBonus(
+  List<String?> layout,
+  int index,
+  BuildingType type,
+) {
+  final neighbors = _neighborIndices(index);
+  var bonus = 1.0;
+  for (final n in neighbors) {
+    final neighborId = layout[n];
+    if (neighborId == null) {
+      continue;
+    }
+    final neighborDef = buildingById[neighborId];
+    if (neighborDef == null) {
+      continue;
+    }
+    switch (type) {
+      case BuildingType.shardProducer:
+        if (neighborDef.type == BuildingType.energyProducer) {
+          bonus += 0.2;
+        }
+        break;
+      case BuildingType.shardToPart:
+        if (neighborDef.type == BuildingType.shardProducer) {
+          bonus += 0.1;
+        }
+        break;
+      case BuildingType.partToBlueprint:
+        if (neighborDef.type == BuildingType.shardToPart) {
+          bonus += 0.1;
+        }
+        break;
+      case BuildingType.energyProducer:
+        if (neighborDef.type == BuildingType.shardProducer) {
+          bonus += 0.05;
+        }
+        break;
+    }
+  }
+  return bonus;
+}
+
+List<int> _neighborIndices(int index) {
+  final row = index ~/ layoutColumns;
+  final col = index % layoutColumns;
+  final neighbors = <int>[];
+  if (row > 0) {
+    neighbors.add(index - layoutColumns);
+  }
+  if (row < layoutRows - 1) {
+    neighbors.add(index + layoutColumns);
+  }
+  if (col > 0) {
+    neighbors.add(index - 1);
+  }
+  if (col < layoutColumns - 1) {
+    neighbors.add(index + 1);
+  }
+  return neighbors;
+}
+
+double effectiveEnergySplit({
+  required GameState state,
+  required double energyProd,
+  required double energyNeed,
+}) {
+  if (energyProd <= 0) {
+    return state.energyToSynthesisRatio;
+  }
+  switch (state.energyPriorityMode) {
+    case EnergyPriorityMode.synthesisFirst:
+      if (energyNeed <= 0) {
+        return state.energyToSynthesisRatio;
+      }
+      return math.min(1.0, energyNeed / energyProd);
+    case EnergyPriorityMode.conversionFirst:
+      return state.energyToSynthesisRatio;
+  }
 }
 
 /// 计算下一个建筑的造价
