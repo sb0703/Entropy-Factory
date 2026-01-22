@@ -8,7 +8,9 @@ import 'tabs/log_tab.dart';
 import 'tabs/prestige_tab.dart';
 import 'tabs/production_tab.dart';
 import 'tabs/research_tab.dart';
+import 'tabs/skill_tab.dart';
 import 'widgets/resource_bar.dart';
+import 'widgets/skill_quick_bar.dart';
 import 'widgets/space_background.dart';
 
 class HomeShell extends StatefulWidget {
@@ -25,6 +27,7 @@ class _HomeShellState extends State<HomeShell> {
   final _tabs = const [
     ProductionTab(),
     ResearchTab(),
+    SkillTab(),
     PrestigeTab(),
     LogTab(),
   ];
@@ -35,7 +38,7 @@ class _HomeShellState extends State<HomeShell> {
     return Consumer(
       builder: (context, ref, _) {
         ref.listen<GameState>(gameControllerProvider, (previous, next) {
-          // 仅取最近的离线收益，且限制触发窗口。
+          // 仅取最近的离线收益，并限制触发窗口。
           final entry = _latestOfflineEntry(next);
           if (entry == null) {
             return;
@@ -79,6 +82,11 @@ class _HomeShellState extends State<HomeShell> {
                     label: '研究',
                   ),
                   NavigationDestination(
+                    icon: Icon(Icons.auto_fix_high_outlined),
+                    selectedIcon: Icon(Icons.auto_fix_high),
+                    label: '技能',
+                  ),
+                  NavigationDestination(
                     icon: Icon(Icons.auto_graph_outlined),
                     selectedIcon: Icon(Icons.auto_graph),
                     label: '升维',
@@ -94,7 +102,7 @@ class _HomeShellState extends State<HomeShell> {
                 child: Column(
                   children: [
                     const ResourceBar(),
-                    const SizedBox(height: 8),
+                    const SkillQuickBar(),
                     Expanded(
                       child: IndexedStack(
                         index: _currentIndex,

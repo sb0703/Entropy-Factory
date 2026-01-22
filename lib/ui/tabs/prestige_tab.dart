@@ -177,7 +177,6 @@ class PrestigeTab extends ConsumerWidget {
                       (def) => def.id == activeChallengeId,
                       orElse: () => prestigeChallenges.first,
                     ),
-                    onAbandon: controller.abandonChallenge,
                   ),
                 if (activeChallengeId == null)
                   Text(
@@ -186,13 +185,24 @@ class PrestigeTab extends ConsumerWidget {
                           color: const Color(0xFF8FA3BF),
                         ),
                   ),
+                if (activeChallengeId == null)
+                  Text(
+                    '挑战开启后不可取消，请谨慎选择。',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFFF5C542),
+                        ),
+                  ),
                 const SizedBox(height: 12),
                 for (final challenge in prestigeChallenges)
                   _ChallengeTile(
                     challenge: challenge,
                     isActive: activeChallengeId == challenge.id,
                     isCompleted: completedChallenges.contains(challenge.id),
-                    onStart: () => controller.startChallenge(challenge.id),
+                    onStart: () => _confirmStartChallenge(
+                      context,
+                      challenge: challenge,
+                      onConfirm: () => controller.startChallenge(challenge.id),
+                    ),
                   ),
               ],
             ),
@@ -627,6 +637,60 @@ class _PrestigeTransitionState extends State<_PrestigeTransition> {
   }
 }
 
+Future<void> _confirmStartChallenge(
+  BuildContext context, {
+  required PrestigeChallenge challenge,
+  required VoidCallback onConfirm,
+}) async {
+  final first = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('确认开启挑战'),
+        content: Text(
+          '挑战「${challenge.title}」将重置当前进度，并且开启后无法取消。',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('继续'),
+          ),
+        ],
+      );
+    },
+  );
+  if (first != true || !context.mounted) {
+    return;
+  }
+  final second = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('最后确认'),
+        content: const Text('确定开始挑战？开启后无法取消。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('返回'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('开始挑战'),
+          ),
+        ],
+      );
+    },
+  );
+  if (second == true && context.mounted) {
+    onConfirm();
+  }
+}
+
 String _formatNumber(Object value) {
     return formatNumber(value);
 }
@@ -761,11 +825,9 @@ class _ChallengeTile extends StatelessWidget {
 class _ActiveChallengeBanner extends StatelessWidget {
   const _ActiveChallengeBanner({
     required this.challenge,
-    required this.onAbandon,
   });
 
   final PrestigeChallenge challenge;
-  final VoidCallback onAbandon;
 
   @override
   Widget build(BuildContext context) {
@@ -795,12 +857,11 @@ class _ActiveChallengeBanner extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: onAbandon,
-              child: const Text('放弃挑战'),
-            ),
+          Text(
+            '挑战已开启，无法取消。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFFF5C542),
+                ),
           ),
         ],
       ),

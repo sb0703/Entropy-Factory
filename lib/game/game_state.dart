@@ -26,6 +26,11 @@ class GameState {
     required this.activeChallengeId,
     required this.completedChallenges,
     required this.permanentUnlocks,
+    required this.runModifiers,
+    required this.skillPoints,
+    required this.unlockedSkills,
+    required this.equippedSkills,
+    required this.pulseCooldownEndsAtMs,
     required this.shardToPartRatio,
     required this.keepShardReserve,
     required this.energyToSynthesisRatio,
@@ -66,6 +71,21 @@ class GameState {
 
   /// 宸解鎖的永久解鎖 ID 闆嗗悎
   final Set<String> permanentUnlocks;
+
+  /// 本轮变体词条 ID 列表
+  final List<String> runModifiers;
+
+  /// 可用技能点
+  final int skillPoints;
+
+  /// 已解锁技能 ID 集合
+  final Set<String> unlockedSkills;
+
+  /// 已装配技能 ID（含主动与被动）
+  final List<String> equippedSkills;
+
+  /// 资源脉冲冷却结束时间
+  final int pulseCooldownEndsAtMs;
 
   /// 纰庣墖杞崲涓洪浂浠剁殑鍒嗛厤姣斾緥 (0.0 - 1.0)
   /// 鎺у埗鏈夊灏戜骇鐢熺殑纰庣墖浼氳鑷姩閫佸幓杞崲銆?
@@ -126,6 +146,11 @@ class GameState {
     String? activeChallengeId,
     Set<String>? completedChallenges,
     Set<String>? permanentUnlocks,
+    List<String>? runModifiers,
+    int? skillPoints,
+    Set<String>? unlockedSkills,
+    List<String>? equippedSkills,
+    int? pulseCooldownEndsAtMs,
     double? shardToPartRatio,
     bool? keepShardReserve,
     double? energyToSynthesisRatio,
@@ -149,6 +174,11 @@ class GameState {
       activeChallengeId: activeChallengeId ?? this.activeChallengeId,
       completedChallenges: completedChallenges ?? this.completedChallenges,
       permanentUnlocks: permanentUnlocks ?? this.permanentUnlocks,
+      runModifiers: runModifiers ?? this.runModifiers,
+      skillPoints: skillPoints ?? this.skillPoints,
+      unlockedSkills: unlockedSkills ?? this.unlockedSkills,
+      equippedSkills: equippedSkills ?? this.equippedSkills,
+      pulseCooldownEndsAtMs: pulseCooldownEndsAtMs ?? this.pulseCooldownEndsAtMs,
       shardToPartRatio: shardToPartRatio ?? this.shardToPartRatio,
       keepShardReserve: keepShardReserve ?? this.keepShardReserve,
       energyToSynthesisRatio: energyToSynthesisRatio ?? this.energyToSynthesisRatio,
@@ -204,6 +234,11 @@ class GameState {
       'activeChallengeId': activeChallengeId,
       'completedChallenges': completedChallenges.toList(),
       'permanentUnlocks': permanentUnlocks.toList(),
+      'runModifiers': runModifiers,
+      'skillPoints': skillPoints,
+      'unlockedSkills': unlockedSkills.toList(),
+      'equippedSkills': equippedSkills,
+      'pulseCooldownEndsAtMs': pulseCooldownEndsAtMs,
       'shardToPartRatio': shardToPartRatio,
       'keepShardReserve': keepShardReserve,
       'energyToSynthesisRatio': energyToSynthesisRatio,
@@ -286,6 +321,30 @@ class GameState {
       }
     }
 
+    final runModifiers = <String>[];
+    final runList = json['runModifiers'];
+    if (runList is List) {
+      for (final entry in runList) {
+        runModifiers.add(entry.toString());
+      }
+    }
+
+    final unlockedSkills = <String>{};
+    final unlockedList = json['unlockedSkills'];
+    if (unlockedList is List) {
+      for (final entry in unlockedList) {
+        unlockedSkills.add(entry.toString());
+      }
+    }
+
+    final equippedSkills = <String>[];
+    final equippedList = json['equippedSkills'];
+    if (equippedList is List) {
+      for (final entry in equippedList) {
+        equippedSkills.add(entry.toString());
+      }
+    }
+
     // 瑙ｆ瀽甯告暟鍗囩骇
     final constantUpgrades = <String, int>{};
     final upgradeMap = json['constantUpgrades'];
@@ -335,6 +394,12 @@ class GameState {
       activeChallengeId: json['activeChallengeId']?.toString(),
       completedChallenges: completedChallenges,
       permanentUnlocks: permanentUnlocks,
+      runModifiers: runModifiers,
+      skillPoints: (json['skillPoints'] as num?)?.toInt() ?? 0,
+      unlockedSkills: unlockedSkills,
+      equippedSkills: equippedSkills,
+      pulseCooldownEndsAtMs:
+          (json['pulseCooldownEndsAtMs'] as num?)?.toInt() ?? 0,
       shardToPartRatio:
           (json['shardToPartRatio'] as num?)?.toDouble() ?? defaults.shardToPartRatio,
       keepShardReserve: json['keepShardReserve'] as bool? ?? defaults.keepShardReserve,
@@ -395,6 +460,11 @@ class GameState {
       activeChallengeId: null,
       completedChallenges: const <String>{},
       permanentUnlocks: const <String>{},
+      runModifiers: const <String>[],
+      skillPoints: 0,
+      unlockedSkills: const <String>{},
+      equippedSkills: const <String>[],
+      pulseCooldownEndsAtMs: 0,
       shardToPartRatio: 0.5,
       keepShardReserve: true,
       energyToSynthesisRatio: 0.7,

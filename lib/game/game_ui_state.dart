@@ -10,6 +10,7 @@ import 'game_state.dart';
 import 'milestone_definitions.dart';
 import 'number_format.dart';
 import 'research_definitions.dart';
+import 'run_modifiers.dart';
 import 'synergy_rules.dart';
 
 @immutable
@@ -234,7 +235,8 @@ final gameUiProvider = Provider<GameUiState>((ref) {
   final state = ref.watch(gameControllerProvider);
   final effects = computeResearchEffects(state)
       .combine(computeMilestoneEffects(state))
-      .combine(computeSynergyEffects(state));
+      .combine(computeSynergyEffects(state))
+      .combine(computeRunModifierEffects(state));
   final constants = computeConstantEffects(state);
   final rates = GameRates.fromState(state, effects, constants);
   final nowMs = DateTime.now().millisecondsSinceEpoch;

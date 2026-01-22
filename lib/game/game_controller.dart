@@ -13,6 +13,8 @@ import 'number_format.dart';
 import 'prestige_challenges.dart';
 import 'prestige_rules.dart';
 import 'research_definitions.dart';
+import 'run_modifiers.dart';
+import 'skill_definitions.dart';
 import 'synergy_rules.dart';
 import '../services/save_service.dart';
 
@@ -35,6 +37,7 @@ class GameController extends StateNotifier<GameState> {
   static const int _overclockMaxLevel = 6;
   static const int _simTickMs = 100;
   static const int _uiSyncMs = 500;
+  static const int _pulseCooldownMs = 90 * 1000;
 
   GameController() : super(GameState.initial()) {
     _simState = state;
@@ -179,6 +182,11 @@ class GameController extends StateNotifier<GameState> {
       state = _simState;
     } else {
       _simState = state;
+    }
+    if (_simState.runModifiers.isEmpty) {
+      _simState = _simState.copyWith(runModifiers: _rollRunModifiers());
+      state = _simState;
+      _lastUiSyncMs = DateTime.now().millisecondsSinceEpoch;
     }
 
     final lastSeenMs = await _saveService.loadLastSeenMs();
@@ -436,6 +444,11 @@ class GameController extends StateNotifier<GameState> {
       activeChallengeId: challengeId,
       completedChallenges: {..._simState.completedChallenges},
       permanentUnlocks: {..._simState.permanentUnlocks},
+      runModifiers: _rollRunModifiers(),
+      skillPoints: _simState.skillPoints,
+      unlockedSkills: {..._simState.unlockedSkills},
+      equippedSkills: [..._simState.equippedSkills],
+      pulseCooldownEndsAtMs: 0,
     );
     _commitState(nextState.addLogEntry('挑战升维', '进入挑战：${challenge.title}'));
   }
@@ -456,6 +469,11 @@ class GameController extends StateNotifier<GameState> {
       activeChallengeId: null,
       completedChallenges: {..._simState.completedChallenges},
       permanentUnlocks: {..._simState.permanentUnlocks},
+      runModifiers: _rollRunModifiers(),
+      skillPoints: _simState.skillPoints,
+      unlockedSkills: {..._simState.unlockedSkills},
+      equippedSkills: [..._simState.equippedSkills],
+      pulseCooldownEndsAtMs: 0,
     );
     _commitState(nextState.addLogEntry('挑战升维', '已放弃当前挑战'));
   }
@@ -608,7 +626,9 @@ class GameController extends StateNotifier<GameState> {
     final research = computeResearchEffects(state);
     final milestones = computeMilestoneEffects(state);
     final synergy = computeSynergyEffects(state);
-    return research.combine(milestones).combine(synergy);
+    final modifiers = computeRunModifierEffects(state);
+    final skills = computeSkillEffects(state);
+    return research.combine(milestones).combine(synergy).combine(modifiers).combine(skills);
   }
 
   ConstantEffects _currentConstants(GameState state) {
@@ -779,6 +799,11 @@ class GameController extends StateNotifier<GameState> {
       activeChallengeId: null,
       completedChallenges: completedChallenges,
       permanentUnlocks: permanentUnlocks,
+      runModifiers: _rollRunModifiers(),
+      skillPoints: _simState.skillPoints,
+      unlockedSkills: {..._simState.unlockedSkills},
+      equippedSkills: [..._simState.equippedSkills],
+      pulseCooldownEndsAtMs: 0,
     );
     _commitState(
       nextState.addLogEntry('升维完成', '获得常数 +${_formatNumber(gain)}'),
@@ -813,6 +838,149 @@ class GameController extends StateNotifier<GameState> {
     }
     return challenge.allowedBuildingTypes!.contains(def.type);
   }
+
+  List<String> _rollRunModifiers() {
+    final seed = DateTime.now().millisecondsSinceEpoch ^
+        _simState.resources.hashCode ^
+        _simState.buildings.hashCode;
+    final random = math.Random(seed);
+    return rollRunModifiers(random);
+  }
+
+  int maxSkillSlots(GameState state) {
+    return math.min(5, 3 + unlockedModuleSlots(state));
+  }
+
+  BigNumber skillPointCost(int current) {
+    final base = 50.0;
+    final growth = 1.35;
+    final cost = base * math.pow(growth, current).toDouble();
+    return BigNumber.fromDouble(cost);
+  }
+
+  void buySkillPoint() {
+    final cost = skillPointCost(_simState.skillPoints);
+    final currency = _simState.resource(ResourceType.blueprint);
+    if (currency < cost) {
+      return;
+    }
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.blueprint: currency - cost,
+        },
+        skillPoints: _simState.skillPoints + 1,
+      ),
+    );
+  }
+
+  void unlockSkillWithBlueprints(String skillId) {
+    final def = skillById[skillId];
+    if (def == null || def.costBlueprints <= 0) {
+      return;
+    }
+    if (_simState.unlockedSkills.contains(skillId)) {
+      return;
+    }
+    if (!skillPrerequisitesMet(_simState, def)) {
+      return;
+    }
+    final cost = BigNumber.fromDouble(def.costBlueprints);
+    final currency = _simState.resource(ResourceType.blueprint);
+    if (currency < cost) {
+      return;
+    }
+    final next = {..._simState.unlockedSkills, skillId};
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.blueprint: currency - cost,
+        },
+        unlockedSkills: next,
+      ),
+    );
+  }
+
+  void unlockSkillWithPoints(String skillId) {
+    final def = skillById[skillId];
+    if (def == null || def.costSkillPoints <= 0) {
+      return;
+    }
+    if (_simState.unlockedSkills.contains(skillId)) {
+      return;
+    }
+    if (!skillPrerequisitesMet(_simState, def)) {
+      return;
+    }
+    if (_simState.skillPoints < def.costSkillPoints) {
+      return;
+    }
+    final next = {..._simState.unlockedSkills, skillId};
+    _commitState(
+      _simState.copyWith(
+        skillPoints: _simState.skillPoints - def.costSkillPoints,
+        unlockedSkills: next,
+      ),
+    );
+  }
+
+  void toggleEquipSkill(String skillId) {
+    if (!_simState.unlockedSkills.contains(skillId)) {
+      return;
+    }
+    final equipped = [..._simState.equippedSkills];
+    if (equipped.contains(skillId)) {
+      equipped.remove(skillId);
+      _commitState(_simState.copyWith(equippedSkills: equipped));
+      return;
+    }
+    if (equipped.length >= maxSkillSlots(_simState)) {
+      return;
+    }
+    equipped.add(skillId);
+    _commitState(_simState.copyWith(equippedSkills: equipped));
+  }
+
+  void activateSkill(String skillId) {
+    if (!_simState.equippedSkills.contains(skillId)) {
+      return;
+    }
+    switch (skillId) {
+      case 'skill_time_warp':
+        activateTimeWarp();
+        return;
+      case 'skill_overclock':
+        activateOverclock();
+        return;
+      case 'skill_pulse':
+        _activatePulse();
+        return;
+    }
+  }
+
+  void _activatePulse() {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs < _simState.pulseCooldownEndsAtMs) {
+      return;
+    }
+    final effects = _currentEffects(_simState);
+    final constants = _currentConstants(_simState);
+    final shardGain = shardProductionPerSec(_simState, effects) *
+        constants.productionMultiplier * 10;
+    final nextShards = _simState.resource(ResourceType.shard) +
+        BigNumber.fromDouble(shardGain);
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.shard: nextShards,
+        },
+        pulseCooldownEndsAtMs: nowMs + _pulseCooldownMs,
+      ),
+    );
+  }
 }
 
 final gameControllerProvider = StateNotifierProvider<GameController, GameState>(
@@ -826,3 +994,5 @@ String _formatNumber(Object value) {
 }
 
 bool _alwaysFalse(GameState state) => false;
+
+

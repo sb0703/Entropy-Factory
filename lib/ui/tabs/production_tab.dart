@@ -1,13 +1,10 @@
-﻿import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../game/big_number.dart';
 import '../../game/game_controller.dart';
 import '../../game/game_ui_state.dart';
 import '../../game/game_state.dart';
-import '../../game/number_format.dart';
+import '../../game/run_modifiers.dart';
 import '../effects/particle_layer.dart';
 import '../widgets/building_card.dart';
 import '../widgets/law_progress_card.dart';
@@ -28,20 +25,6 @@ class ProductionTab extends ConsumerWidget {
     final anchorRegistry = ref.read(resourceAnchorRegistryProvider);
     final blueprints = gameState.resource(ResourceType.blueprint);
     final laws = gameState.resource(ResourceType.law);
-    final constants = gameState.resource(ResourceType.constant);
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final timeWarpDurationMs = controller.timeWarpDurationMs(gameState);
-    final timeWarpCooldownMs = controller.timeWarpCooldownMs(gameState);
-    final timeWarpActiveRemainingMs =
-        math.max(0, gameState.timeWarpEndsAtMs - nowMs);
-    final timeWarpCooldownRemainingMs =
-        math.max(0, gameState.timeWarpCooldownEndsAtMs - nowMs);
-    final overclockDurationMs = controller.overclockDurationMs(gameState);
-    final overclockCooldownMs = controller.overclockCooldownMs(gameState);
-    final overclockActiveRemainingMs =
-        math.max(0, gameState.overclockEndsAtMs - nowMs);
-    final overclockCooldownRemainingMs =
-        math.max(0, gameState.overclockCooldownEndsAtMs - nowMs);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -66,43 +49,13 @@ class ProductionTab extends ConsumerWidget {
                       const SizedBox(height: 12),
                       RateSummaryCard(summary: state.rateSummary),
                       const SizedBox(height: 12),
+                      _RunModifierCard(
+                        modifiers: gameState.runModifiers,
+                      ),
+                      const SizedBox(height: 12),
                       LawProgressCard(
                         blueprints: blueprints,
                         laws: laws,
-                      ),
-                      const SizedBox(height: 16),
-                      _SkillCard(
-                        title: '时间扭曲',
-                        description: '游戏速度 x2',
-                        icon: Icons.timelapse,
-                        activeRemainingMs: timeWarpActiveRemainingMs,
-                        cooldownRemainingMs: timeWarpCooldownRemainingMs,
-                        durationMs: timeWarpDurationMs,
-                        cooldownMs: timeWarpCooldownMs,
-                        level: gameState.timeWarpLevel,
-                        maxLevel: controller.timeWarpMaxLevel(),
-                        upgradeCost:
-                            controller.timeWarpUpgradeCost(gameState.timeWarpLevel),
-                        availableConstants: constants,
-                        onActivate: controller.activateTimeWarp,
-                        onUpgrade: controller.buyTimeWarpUpgrade,
-                      ),
-                      const SizedBox(height: 12),
-                      _SkillCard(
-                        title: '手动超频',
-                        description: '转换与合成效率提升',
-                        icon: Icons.flash_on,
-                        activeRemainingMs: overclockActiveRemainingMs,
-                        cooldownRemainingMs: overclockCooldownRemainingMs,
-                        durationMs: overclockDurationMs,
-                        cooldownMs: overclockCooldownMs,
-                        level: gameState.overclockLevel,
-                        maxLevel: controller.overclockMaxLevel(),
-                        upgradeCost:
-                            controller.overclockUpgradeCost(gameState.overclockLevel),
-                        availableConstants: constants,
-                        onActivate: controller.activateOverclock,
-                        onUpgrade: controller.buyOverclockUpgrade,
                       ),
                       const SizedBox(height: 16),
                       const RatioPanel(),
@@ -147,43 +100,13 @@ class ProductionTab extends ConsumerWidget {
             const SizedBox(height: 12),
             RateSummaryCard(summary: state.rateSummary),
             const SizedBox(height: 12),
+            _RunModifierCard(
+              modifiers: gameState.runModifiers,
+            ),
+            const SizedBox(height: 12),
             LawProgressCard(
               blueprints: blueprints,
               laws: laws,
-            ),
-            const SizedBox(height: 16),
-            _SkillCard(
-              title: '时间扭曲',
-              description: '游戏速度 x2',
-              icon: Icons.timelapse,
-              activeRemainingMs: timeWarpActiveRemainingMs,
-              cooldownRemainingMs: timeWarpCooldownRemainingMs,
-              durationMs: timeWarpDurationMs,
-              cooldownMs: timeWarpCooldownMs,
-              level: gameState.timeWarpLevel,
-              maxLevel: controller.timeWarpMaxLevel(),
-              upgradeCost:
-                  controller.timeWarpUpgradeCost(gameState.timeWarpLevel),
-              availableConstants: constants,
-              onActivate: controller.activateTimeWarp,
-              onUpgrade: controller.buyTimeWarpUpgrade,
-            ),
-            const SizedBox(height: 12),
-            _SkillCard(
-              title: '手动超频',
-              description: '转换与合成效率提升',
-              icon: Icons.flash_on,
-              activeRemainingMs: overclockActiveRemainingMs,
-              cooldownRemainingMs: overclockCooldownRemainingMs,
-              durationMs: overclockDurationMs,
-              cooldownMs: overclockCooldownMs,
-              level: gameState.overclockLevel,
-              maxLevel: controller.overclockMaxLevel(),
-              upgradeCost:
-                  controller.overclockUpgradeCost(gameState.overclockLevel),
-              availableConstants: constants,
-              onActivate: controller.activateOverclock,
-              onUpgrade: controller.buyOverclockUpgrade,
             ),
             const SizedBox(height: 16),
             for (final building in state.buildings) ...[
@@ -207,147 +130,35 @@ class ProductionTab extends ConsumerWidget {
   }
 }
 
-class _SkillCard extends StatelessWidget {
-  const _SkillCard({
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.activeRemainingMs,
-    required this.cooldownRemainingMs,
-    required this.durationMs,
-    required this.cooldownMs,
-    required this.level,
-    required this.maxLevel,
-    required this.upgradeCost,
-    required this.availableConstants,
-    required this.onActivate,
-    required this.onUpgrade,
+class _RunModifierCard extends StatelessWidget {
+  const _RunModifierCard({
+    required this.modifiers,
   });
 
-  final String title;
-  final String description;
-  final IconData icon;
-  final int activeRemainingMs;
-  final int cooldownRemainingMs;
-  final int durationMs;
-  final int cooldownMs;
-  final int level;
-  final int maxLevel;
-  final BigNumber upgradeCost;
-  final BigNumber availableConstants;
-  final VoidCallback onActivate;
-  final VoidCallback onUpgrade;
+  final List<String> modifiers;
 
   @override
   Widget build(BuildContext context) {
-    final isActive = activeRemainingMs > 0;
-    final isCooling = cooldownRemainingMs > 0 && !isActive;
-    final canUse = !isActive && !isCooling;
-    final label = isActive
-        ? '持续中 ${_formatDuration(activeRemainingMs)}'
-        : (isCooling ? '冷却中 ${_formatDuration(cooldownRemainingMs)}' : '可使用');
-    final activeProgress =
-        durationMs <= 0 ? 0.0 : activeRemainingMs / durationMs;
-    final cooldownProgress = cooldownMs <= 0
-        ? 0.0
-        : (1 - cooldownRemainingMs / cooldownMs).clamp(0.0, 1.0);
-    final skillProgress = isActive ? activeProgress : cooldownProgress;
-    final isMaxLevel = level >= maxLevel;
-    final canUpgrade = !isMaxLevel && availableConstants >= upgradeCost;
-
+    if (modifiers.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 38,
-                      height: 38,
-                      child: CircularProgressIndicator(
-                        value: skillProgress,
-                        strokeWidth: 3,
-                        backgroundColor: const Color(0xFF1E2A3D),
-                        color: isActive
-                            ? const Color(0xFF5CE1E6)
-                            : (isCooling
-                                ? const Color(0xFFF5C542)
-                                : const Color(0xFF8BE4B4)),
-                      ),
-                    ),
-                    Icon(icon, color: const Color(0xFF8FA3BF)),
-                  ],
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '主动技能：$title',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const Spacer(),
-                Text(
-                  'Lv.$level',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
             Text(
-              '持续 ${_formatDuration(durationMs)}，$description（冷却 ${_formatDuration(cooldownMs)}）',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
+              '本轮变体',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: isActive
-                              ? const Color(0xFF5CE1E6)
-                              : (isCooling
-                                  ? const Color(0xFFF5C542)
-                                  : const Color(0xFF8BE4B4)),
-                        ),
-                  ),
-                ),
-                FilledButton(
-                  onPressed: canUse ? onActivate : null,
-                  child: const Text('启动'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    isMaxLevel
-                        ? '已满级'
-                        : '强化消耗：${_formatNumber(upgradeCost)} 常数',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: isMaxLevel
-                              ? const Color(0xFF8FA3BF)
-                              : const Color(0xFFF5C542),
-                        ),
-                  ),
-                ),
-                OutlinedButton(
-                  onPressed: canUpgrade ? onUpgrade : null,
-                  child: Text(isMaxLevel ? '已满级' : '强化'),
-                ),
-              ],
-            ),
+            const SizedBox(height: 8),
+            for (final id in modifiers)
+              _RunModifierTile(
+                modifier: runModifierById[id],
+              ),
           ],
         ),
       ),
@@ -355,16 +166,44 @@ class _SkillCard extends StatelessWidget {
   }
 }
 
-String _formatDuration(int ms) {
-  final seconds = (ms / 1000).ceil();
-  final minutes = seconds ~/ 60;
-  final remaining = seconds % 60;
-  if (minutes > 0) {
-    return '$minutes:${remaining.toString().padLeft(2, '0')}';
-  }
-  return '${remaining}s';
-}
+class _RunModifierTile extends StatelessWidget {
+  const _RunModifierTile({
+    required this.modifier,
+  });
 
-String _formatNumber(Object value) {
-  return formatNumber(value);
+  final RunModifier? modifier;
+
+  @override
+  Widget build(BuildContext context) {
+    if (modifier == null) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1B2D),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF22324A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            modifier!.title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            modifier!.description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF8FA3BF),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }
