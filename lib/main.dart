@@ -1,12 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
+import 'services/save_service.dart';
 import 'theme/app_theme.dart';
 import 'ui/home_shell.dart';
 
-void main() {
-  // 确保插件初始化后再启动应用。
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await SaveService.init();
   runApp(const ProviderScope(child: EntropyWorksApp()));
 }
 
@@ -15,7 +18,6 @@ class EntropyWorksApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 根入口仅负责主题与首页容器。
     return MaterialApp(
       title: '熵工厂',
       debugShowCheckedModeBanner: false,

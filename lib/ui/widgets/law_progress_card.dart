@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import '../../game/prestige_rules.dart';
+import '../../game/big_number.dart';
 import '../../game/number_format.dart';
+import '../../game/prestige_rules.dart';
 
 class LawProgressCard extends StatelessWidget {
   const LawProgressCard({
@@ -10,14 +11,15 @@ class LawProgressCard extends StatelessWidget {
     required this.laws,
   });
 
-  final double blueprints;
-  final double laws;
+  final BigNumber blueprints;
+  final BigNumber laws;
 
   @override
   Widget build(BuildContext context) {
-    final progress =
-        (lawThreshold <= 0) ? 0.0 : (blueprints / lawThreshold).clamp(0.0, 1.0);
-    // 蓝图累计进度条，达到阈值自动产出定律。
+    final progress = (lawThreshold <= 0)
+        ? 0.0
+        : (blueprints.toDouble() / lawThreshold).clamp(0.0, 1.0);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -68,6 +70,6 @@ class LawProgressCard extends StatelessWidget {
   }
 }
 
-String _formatNumber(double value) {
+String _formatNumber(Object value) {
   return formatNumber(value);
 }

@@ -1,4 +1,6 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
+
+import 'big_number.dart';
 
 enum ResourceType { shard, part, blueprint, law, constant }
 
@@ -8,10 +10,10 @@ const int layoutColumns = 4;
 const int layoutRows = 4;
 const int layoutSize = layoutColumns * layoutRows;
 
-/// 游戏核心状态类
+/// 娓告垙鏍稿績鐘舵€佺被
 ///
-/// 包含所有需要持久化的游戏数据，如资源数量、建筑数量、解锁的研究、里程碑等。
-/// 这是一个不可变类，所有的状态修改都会返回一个新的实例。
+/// 鍖呭惈鎵€鏈夐渶瑕佹寔涔呭寲鐨勬父鎴忔暟鎹紝濡傝祫婧愭暟閲忋€佸缓绛戞暟閲忋€佽В閿佺殑鐮旂┒銆侀噷绋嬬绛夈€?
+/// 杩欐槸涓€涓笉鍙彉绫伙紝鎵€鏈夌殑鐘舵€佷慨鏀归兘浼氳繑鍥炰竴涓柊鐨勫疄渚嬨€?
 @immutable
 class GameState {
   const GameState({
@@ -21,6 +23,9 @@ class GameState {
     required this.milestonesAchieved,
     required this.constantUpgrades,
     required this.logEntries,
+    required this.activeChallengeId,
+    required this.completedChallenges,
+    required this.permanentUnlocks,
     required this.shardToPartRatio,
     required this.keepShardReserve,
     required this.energyToSynthesisRatio,
@@ -35,76 +40,92 @@ class GameState {
     required this.overclockLevel,
   });
 
-  /// 当前拥有的资源数量映射表
-  final Map<ResourceType, double> resources;
+  /// 褰撳墠鎷ユ湁鐨勮祫婧愭暟閲忔槧灏勮〃
+  final Map<ResourceType, BigNumber> resources;
 
-  /// 当前拥有的建筑数量映射表 (建筑ID -> 数量)
+  /// 褰撳墠鎷ユ湁鐨勫缓绛戞暟閲忔槧灏勮〃 (寤虹瓚ID -> 鏁伴噺)
   final Map<String, int> buildings;
 
-  /// 已购买的研究项目 ID 集合
+  /// 宸茶喘涔扮殑鐮旂┒椤圭洰 ID 闆嗗悎
   final Set<String> researchPurchased;
 
-  /// 已达成的里程碑 ID 集合
+  /// 宸茶揪鎴愮殑閲岀▼纰?ID 闆嗗悎
   final Set<String> milestonesAchieved;
 
-  /// 已购买的常数升级及其等级 (升级ID -> 等级)
+  /// 宸茶喘涔扮殑甯告暟鍗囩骇鍙婂叾绛夌骇 (鍗囩骇ID -> 绛夌骇)
   final Map<String, int> constantUpgrades;
 
-  /// 游戏日志记录
+  /// 娓告垙鏃ュ織璁板綍
   final List<GameLogEntry> logEntries;
 
-  /// 碎片转换为零件的分配比例 (0.0 - 1.0)
-  /// 控制有多少产生的碎片会被自动送去转换。
+  /// 褰撳墠姝ｅ湪杩涜鐨勬寫鎴樺崌缁存ā寮?ID
+  final String? activeChallengeId;
+
+  /// 宸插畬鎴愮殑鎸戞垬鍗囩淮 ID 闆嗗悎
+  final Set<String> completedChallenges;
+
+  /// 宸解鎖的永久解鎖 ID 闆嗗悎
+  final Set<String> permanentUnlocks;
+
+  /// 纰庣墖杞崲涓洪浂浠剁殑鍒嗛厤姣斾緥 (0.0 - 1.0)
+  /// 鎺у埗鏈夊灏戜骇鐢熺殑纰庣墖浼氳鑷姩閫佸幓杞崲銆?
   final double shardToPartRatio;
 
-  /// 是否保留最小碎片储备
-  /// 如果为 true，转换过程不会消耗低于 [shardReserveMin] 的碎片。
+  /// 鏄惁淇濈暀鏈€灏忕鐗囧偍澶?
+  /// 濡傛灉涓?true锛岃浆鎹㈣繃绋嬩笉浼氭秷鑰椾綆浜?[shardReserveMin] 鐨勭鐗囥€?
   final bool keepShardReserve;
 
-  /// 能量分配给合成系统的比例 (0.0 - 1.0)
+  /// 鑳介噺鍒嗛厤缁欏悎鎴愮郴缁熺殑姣斾緥 (0.0 - 1.0)
   final double energyToSynthesisRatio;
 
-  /// 最小碎片储备量
+  /// 鏈€灏忕鐗囧偍澶囬噺
   final double shardReserveMin;
 
-  /// 时间扭曲技能结束时间（毫秒时间戳）
+  /// 鏃堕棿鎵洸鎶€鑳界粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int timeWarpEndsAtMs;
 
-  /// 时间扭曲技能冷却结束时间（毫秒时间戳）
+  /// 鏃堕棿鎵洸鎶€鑳藉喎鍗寸粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int timeWarpCooldownEndsAtMs;
 
-  /// 时间扭曲技能等级
+  /// 鏃堕棿鎵洸鎶€鑳界瓑绾?
   final int timeWarpLevel;
 
-  /// 能量分配优先级
+  /// 鑳介噺鍒嗛厤浼樺厛绾?
   final EnergyPriorityMode energyPriorityMode;
 
-  /// 设施布局格（按行展开的建筑 ID）
+  /// 璁炬柦甯冨眬鏍硷紙鎸夎灞曞紑鐨勫缓绛?ID锛?
   final List<String?> layoutGrid;
 
-  /// 手动超频技能结束时间（毫秒时间戳）
+  /// 鎵嬪姩瓒呴鎶€鑳界粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int overclockEndsAtMs;
 
-  /// 手动超频技能冷却结束时间（毫秒时间戳）
+  /// 鎵嬪姩瓒呴鎶€鑳藉喎鍗寸粨鏉熸椂闂达紙姣鏃堕棿鎴筹級
   final int overclockCooldownEndsAtMs;
 
-  /// 手动超频技能等级
+  /// 鎵嬪姩瓒呴鎶€鑳界瓑绾?
   final int overclockLevel;
 
-  /// 获取指定类型资源的数量，默认为 0
-  double resource(ResourceType type) => resources[type] ?? 0;
+  /// 鑾峰彇鎸囧畾绫诲瀷璧勬簮鐨勬暟閲忥紝榛樿涓?0
+  BigNumber resource(ResourceType type) => resources[type] ?? BigNumber.zero;
 
-  /// 获取指定建筑的数量，默认为 0
+  double resourceAsDouble(ResourceType type, {double max = 1e308}) {
+    return resource(type).toDouble(max: max);
+  }
+
+  /// 鑾峰彇鎸囧畾寤虹瓚鐨勬暟閲忥紝榛樿涓?0
   int buildingCount(String id) => buildings[id] ?? 0;
 
-  /// 创建当前状态的副本，并根据需要修改部分属性
+  /// 鍒涘缓褰撳墠鐘舵€佺殑鍓湰锛屽苟鏍规嵁闇€瑕佷慨鏀归儴鍒嗗睘鎬?
   GameState copyWith({
-    Map<ResourceType, double>? resources,
+    Map<ResourceType, BigNumber>? resources,
     Map<String, int>? buildings,
     Set<String>? researchPurchased,
     Set<String>? milestonesAchieved,
     Map<String, int>? constantUpgrades,
     List<GameLogEntry>? logEntries,
+    String? activeChallengeId,
+    Set<String>? completedChallenges,
+    Set<String>? permanentUnlocks,
     double? shardToPartRatio,
     bool? keepShardReserve,
     double? energyToSynthesisRatio,
@@ -125,6 +146,9 @@ class GameState {
       milestonesAchieved: milestonesAchieved ?? this.milestonesAchieved,
       constantUpgrades: constantUpgrades ?? this.constantUpgrades,
       logEntries: logEntries ?? this.logEntries,
+      activeChallengeId: activeChallengeId ?? this.activeChallengeId,
+      completedChallenges: completedChallenges ?? this.completedChallenges,
+      permanentUnlocks: permanentUnlocks ?? this.permanentUnlocks,
       shardToPartRatio: shardToPartRatio ?? this.shardToPartRatio,
       keepShardReserve: keepShardReserve ?? this.keepShardReserve,
       energyToSynthesisRatio: energyToSynthesisRatio ?? this.energyToSynthesisRatio,
@@ -142,11 +166,11 @@ class GameState {
     );
   }
 
-  /// 添加一条日志记录
+  /// 娣诲姞涓€鏉℃棩蹇楄褰?
   ///
-  /// [title] 日志标题
-  /// [detail] 日志详情
-  /// [maxEntries] 保留的最大日志条数，默认为 50
+  /// [title] 鏃ュ織鏍囬
+  /// [detail] 鏃ュ織璇︽儏
+  /// [maxEntries] 淇濈暀鐨勬渶澶ф棩蹇楁潯鏁帮紝榛樿涓?50
   GameState addLogEntry(
     String title,
     String detail, {
@@ -159,24 +183,27 @@ class GameState {
       timeMs: (time ?? DateTime.now()).millisecondsSinceEpoch,
     );
     final next = [...logEntries, entry];
-    // 如果日志数量超过限制，移除最早的记录
+    // 濡傛灉鏃ュ織鏁伴噺瓒呰繃闄愬埗锛岀Щ闄ゆ渶鏃╃殑璁板綍
     final trimmed = next.length > maxEntries
         ? next.sublist(next.length - maxEntries)
         : next;
     return copyWith(logEntries: trimmed);
   }
 
-  /// 将游戏状态序列化为 JSON Map
+  /// 灏嗘父鎴忕姸鎬佸簭鍒楀寲涓?JSON Map
   Map<String, dynamic> toJson() {
     return {
       'resources': {
-        for (final entry in resources.entries) entry.key.name: entry.value,
+        for (final entry in resources.entries) entry.key.name: entry.value.toJson(),
       },
       'buildings': buildings,
       'researchPurchased': researchPurchased.toList(),
       'milestonesAchieved': milestonesAchieved.toList(),
       'constantUpgrades': constantUpgrades,
       'logEntries': logEntries.map((entry) => entry.toJson()).toList(),
+      'activeChallengeId': activeChallengeId,
+      'completedChallenges': completedChallenges.toList(),
+      'permanentUnlocks': permanentUnlocks.toList(),
       'shardToPartRatio': shardToPartRatio,
       'keepShardReserve': keepShardReserve,
       'energyToSynthesisRatio': energyToSynthesisRatio,
@@ -192,12 +219,12 @@ class GameState {
     };
   }
 
-  /// 从 JSON Map 反序列化游戏状态
+  /// 浠?JSON Map 鍙嶅簭鍒楀寲娓告垙鐘舵€?
   factory GameState.fromJson(Map<String, dynamic> json) {
     final defaults = GameState.initial();
     
-    // 解析资源
-    final resources = Map<ResourceType, double>.from(defaults.resources);
+    // 瑙ｆ瀽璧勬簮
+    final resources = Map<ResourceType, BigNumber>.from(defaults.resources);
     final resourceMap = json['resources'];
     if (resourceMap is Map) {
       for (final entry in resourceMap.entries) {
@@ -210,13 +237,13 @@ class GameState {
             break;
           }
         }
-        if (type != null && value is num) {
-          resources[type] = value.toDouble();
+        if (type != null) {
+          resources[type] = BigNumber.fromJson(value);
         }
       }
     }
 
-    // 解析建筑
+    // 瑙ｆ瀽寤虹瓚
     final buildings = <String, int>{};
     final buildingsMap = json['buildings'];
     if (buildingsMap is Map) {
@@ -225,7 +252,7 @@ class GameState {
       }
     }
 
-    // 解析已购买的研究
+    // 瑙ｆ瀽宸茶喘涔扮殑鐮旂┒
     final researchPurchased = <String>{};
     final researchList = json['researchPurchased'];
     if (researchList is List) {
@@ -234,7 +261,7 @@ class GameState {
       }
     }
 
-    // 解析已达成的里程碑
+    // 瑙ｆ瀽宸茶揪鎴愮殑閲岀▼纰?
     final milestonesAchieved = <String>{};
     final milestoneList = json['milestonesAchieved'];
     if (milestoneList is List) {
@@ -243,7 +270,23 @@ class GameState {
       }
     }
 
-    // 解析常数升级
+    final completedChallenges = <String>{};
+    final completedList = json['completedChallenges'];
+    if (completedList is List) {
+      for (final entry in completedList) {
+        completedChallenges.add(entry.toString());
+      }
+    }
+
+    final permanentUnlocks = <String>{};
+    final unlockList = json['permanentUnlocks'];
+    if (unlockList is List) {
+      for (final entry in unlockList) {
+        permanentUnlocks.add(entry.toString());
+      }
+    }
+
+    // 瑙ｆ瀽甯告暟鍗囩骇
     final constantUpgrades = <String, int>{};
     final upgradeMap = json['constantUpgrades'];
     if (upgradeMap is Map) {
@@ -252,7 +295,7 @@ class GameState {
       }
     }
 
-    // 解析日志
+    // 瑙ｆ瀽鏃ュ織
     final logEntries = <GameLogEntry>[];
     final logList = json['logEntries'];
     if (logList is List) {
@@ -289,6 +332,9 @@ class GameState {
       constantUpgrades:
           constantUpgrades.isEmpty ? defaults.constantUpgrades : constantUpgrades,
       logEntries: logEntries,
+      activeChallengeId: json['activeChallengeId']?.toString(),
+      completedChallenges: completedChallenges,
+      permanentUnlocks: permanentUnlocks,
       shardToPartRatio:
           (json['shardToPartRatio'] as num?)?.toDouble() ?? defaults.shardToPartRatio,
       keepShardReserve: json['keepShardReserve'] as bool? ?? defaults.keepShardReserve,
@@ -323,15 +369,15 @@ class GameState {
     );
   }
 
-  /// 初始化游戏状态（新游戏）
+  /// 鍒濆鍖栨父鎴忕姸鎬侊紙鏂版父鎴忥級
   factory GameState.initial() {
     return GameState(
-      resources: const {
-        ResourceType.shard: 100,
-        ResourceType.part: 0,
-        ResourceType.blueprint: 0,
-        ResourceType.law: 0,
-        ResourceType.constant: 0,
+      resources: {
+        ResourceType.shard: BigNumber.fromDouble(100),
+        ResourceType.part: BigNumber.zero,
+        ResourceType.blueprint: BigNumber.zero,
+        ResourceType.law: BigNumber.zero,
+        ResourceType.constant: BigNumber.zero,
       },
       buildings: const {
         'miner': 1,
@@ -346,6 +392,9 @@ class GameState {
       milestonesAchieved: const <String>{},
       constantUpgrades: const <String, int>{},
       logEntries: const [],
+      activeChallengeId: null,
+      completedChallenges: const <String>{},
+      permanentUnlocks: const <String>{},
       shardToPartRatio: 0.5,
       keepShardReserve: true,
       energyToSynthesisRatio: 0.7,
@@ -362,9 +411,9 @@ class GameState {
   }
 }
 
-/// 游戏日志条目类
+/// 娓告垙鏃ュ織鏉＄洰绫?
 ///
-/// 记录游戏中的重要事件，如达成里程碑、完成研究等。
+/// 璁板綍娓告垙涓殑閲嶈浜嬩欢锛屽杈炬垚閲岀▼纰戙€佸畬鎴愮爺绌剁瓑銆?
 @immutable
 class GameLogEntry {
   const GameLogEntry({
@@ -373,16 +422,16 @@ class GameLogEntry {
     required this.timeMs,
   });
 
-  /// 标题
+  /// 鏍囬
   final String title;
   
-  /// 详情内容
+  /// 璇︽儏鍐呭
   final String detail;
   
-  /// 发生时间（毫秒时间戳）
+  /// 鍙戠敓鏃堕棿锛堟绉掓椂闂存埑锛?
   final int timeMs;
 
-  /// 序列化为 JSON
+  /// 搴忓垪鍖栦负 JSON
   Map<String, dynamic> toJson() {
     return {
       'title': title,
@@ -391,7 +440,7 @@ class GameLogEntry {
     };
   }
 
-  /// 反序列化
+  /// 鍙嶅簭鍒楀寲
   factory GameLogEntry.fromJson(Map<String, dynamic> json) {
     return GameLogEntry(
       title: json['title']?.toString() ?? '',
@@ -400,3 +449,6 @@ class GameLogEntry {
     );
   }
 }
+
+
+

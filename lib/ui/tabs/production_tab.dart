@@ -1,17 +1,19 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../game/big_number.dart';
 import '../../game/game_controller.dart';
 import '../../game/game_ui_state.dart';
 import '../../game/game_state.dart';
+import '../../game/number_format.dart';
+import '../effects/particle_layer.dart';
 import '../widgets/building_card.dart';
 import '../widgets/law_progress_card.dart';
 import '../widgets/layout_panel.dart';
 import '../widgets/rate_summary_card.dart';
 import '../widgets/ratio_panel.dart';
-import '../effects/particle_layer.dart';
 import '../widgets/resource_bar.dart';
 
 class ProductionTab extends ConsumerWidget {
@@ -41,7 +43,6 @@ class ProductionTab extends ConsumerWidget {
     final overclockCooldownRemainingMs =
         math.max(0, gameState.overclockCooldownEndsAtMs - nowMs);
 
-    // 根据宽度切换双栏/单栏布局，避免小屏拥挤。
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 900;
@@ -232,8 +233,8 @@ class _SkillCard extends StatelessWidget {
   final int cooldownMs;
   final int level;
   final int maxLevel;
-  final double upgradeCost;
-  final double availableConstants;
+  final BigNumber upgradeCost;
+  final BigNumber availableConstants;
   final VoidCallback onActivate;
   final VoidCallback onUpgrade;
 
@@ -333,7 +334,7 @@ class _SkillCard extends StatelessWidget {
                   child: Text(
                     isMaxLevel
                         ? '已满级'
-                        : '强化消耗：${upgradeCost.toStringAsFixed(1)} 常数',
+                        : '强化消耗：${_formatNumber(upgradeCost)} 常数',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: isMaxLevel
                               ? const Color(0xFF8FA3BF)
@@ -362,4 +363,8 @@ String _formatDuration(int ms) {
     return '$minutes:${remaining.toString().padLeft(2, '0')}';
   }
   return '${remaining}s';
+}
+
+String _formatNumber(Object value) {
+  return formatNumber(value);
 }

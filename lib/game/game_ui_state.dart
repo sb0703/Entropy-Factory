@@ -1,15 +1,16 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'big_number.dart';
+import 'constant_upgrades.dart';
 import 'game_controller.dart';
 import 'game_definitions.dart';
 import 'game_math.dart';
 import 'game_state.dart';
-import 'constant_upgrades.dart';
-import 'research_definitions.dart';
 import 'milestone_definitions.dart';
-import 'synergy_rules.dart';
 import 'number_format.dart';
+import 'research_definitions.dart';
+import 'synergy_rules.dart';
 
 @immutable
 class ResourceDisplay {
@@ -159,14 +160,14 @@ class GameUiState {
         ResourceDisplay(
           type: ResourceType.shard,
           label: '碎片',
-          amount: state.resource(ResourceType.shard),
+          amount: state.resourceAsDouble(ResourceType.shard),
           value: _formatNumber(state.resource(ResourceType.shard)),
           tone: const Color(0xFF5CE1E6),
         ),
         ResourceDisplay(
           type: ResourceType.part,
           label: '零件',
-          amount: state.resource(ResourceType.part),
+          amount: state.resourceAsDouble(ResourceType.part),
           value: _formatNumber(state.resource(ResourceType.part)),
           tone: const Color(0xFF8BE4B4),
           isAlert: rates.partBottleneck,
@@ -174,21 +175,21 @@ class GameUiState {
         ResourceDisplay(
           type: ResourceType.blueprint,
           label: '蓝图',
-          amount: state.resource(ResourceType.blueprint),
+          amount: state.resourceAsDouble(ResourceType.blueprint),
           value: _formatNumber(state.resource(ResourceType.blueprint)),
           tone: const Color(0xFFF5C542),
         ),
         ResourceDisplay(
           type: ResourceType.law,
           label: '定律',
-          amount: state.resource(ResourceType.law),
+          amount: state.resourceAsDouble(ResourceType.law),
           value: _formatNumber(state.resource(ResourceType.law)),
           tone: const Color(0xFF9D7CFF),
         ),
         ResourceDisplay(
           type: ResourceType.constant,
           label: '常数',
-          amount: state.resource(ResourceType.constant),
+          amount: state.resourceAsDouble(ResourceType.constant),
           value: _formatNumber(state.resource(ResourceType.constant)),
           tone: const Color(0xFFF5F1E1),
         ),
@@ -231,7 +232,6 @@ class GameUiState {
 
 final gameUiProvider = Provider<GameUiState>((ref) {
   final state = ref.watch(gameControllerProvider);
-  // UI 侧只关心展示用的派生数据。
   final effects = computeResearchEffects(state)
       .combine(computeMilestoneEffects(state))
       .combine(computeSynergyEffects(state));
@@ -341,10 +341,11 @@ ResearchNodeDisplay _buildResearchDisplay(
 ) {
   final isPurchased = state.researchPurchased.contains(def.id);
   final prereqOk = researchPrerequisitesMet(state, def);
+  final cost = BigNumber.fromDouble(def.costBlueprints);
   final canBuy =
       !isPurchased &&
       prereqOk &&
-      state.resource(ResourceType.blueprint) >= def.costBlueprints;
+      state.resource(ResourceType.blueprint) >= cost;
   final status = isPurchased
       ? ResearchStatus.purchased
       : (prereqOk ? ResearchStatus.available : ResearchStatus.locked);
@@ -457,7 +458,7 @@ String _formatSignedRate(double value) {
   return '$sign${_formatNumber(value)}';
 }
 
-String _formatNumber(double value) {
+String _formatNumber(Object value) {
   return formatNumber(value);
 }
 

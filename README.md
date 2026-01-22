@@ -1,16 +1,53 @@
-# flutter_game_test
+# 熵工厂（Flutter 增量游戏）
 
-A new Flutter project.
+一个以“碎片 → 零件 → 蓝图 → 定律”为核心循环的增量/放置类游戏，包含升维、研究、常数强化与挑战升维等系统。
 
-## Getting Started
+## 主要特性
 
-This project is a starting point for a Flutter application.
+- 资源循环：采集、转换、合成与定律生成
+- 能量硬约束与优先级分配
+- 设施协同与邻接布局系统
+- 主动技能：时间扭曲、手动超频
+- 升维系统：常数强化、挑战升维、永久解锁
+- 大数值计算层（科学计数存储与运算）
+- 离线收益与本地存档（Hive）
+- 粒子与过场动画效果
 
-A few resources to get you started if this is your first Flutter project:
+## 运行
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+flutter pub get
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 存档迁移
+
+首次运行会自动把旧的 `shared_preferences` 存档迁移到 Hive。
+
+## 目录结构
+
+- `lib/game/` 核心数值与规则
+- `lib/ui/` 界面与动画
+- `lib/services/` 存档与服务
+- `flutter_plan_v2.md` 设计与后续规划
+
+## 说明
+
+本项目用于原型验证与迭代开发，UI 与数值仍在持续调整中。
+
+## 开发路线图
+
+- V0.9：完善挑战升维与永久解锁效果（模块槽可配置、挑战奖励多样化）
+- V1.0：扩展“宇宙探索/星图”与新资源链
+- V1.1：加入剧情碎片与里程碑叙事
+- V1.2：高级自动化（规则式/脚本化）
+- V1.3：云存档与跨设备同步（可选）
+
+## 版本记录
+
+- 2026-01-22
+  - 大数值计算层（BigNumber）接入
+  - 游戏循环分离：高频模拟 + 低频 UI 刷新
+  - 存档迁移至 Hive（含旧存档自动迁移）
+  - 挑战升维与永久解锁框架
+  - 粒子与升维过场动画优化

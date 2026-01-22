@@ -1,17 +1,19 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'big_number.dart';
+import 'constant_upgrades.dart';
 import 'game_definitions.dart';
 import 'game_math.dart';
 import 'game_state.dart';
-import 'constant_upgrades.dart';
 import 'milestone_definitions.dart';
+import 'number_format.dart';
+import 'prestige_challenges.dart';
 import 'prestige_rules.dart';
 import 'research_definitions.dart';
 import 'synergy_rules.dart';
-import 'number_format.dart';
 import '../services/save_service.dart';
 
 class GameController extends StateNotifier<GameState> {
@@ -31,38 +33,65 @@ class GameController extends StateNotifier<GameState> {
   static const double _overclockUpgradeBaseCost = 4;
   static const double _overclockUpgradeCostGrowth = 1.5;
   static const int _overclockMaxLevel = 6;
+  static const int _simTickMs = 100;
+  static const int _uiSyncMs = 500;
 
   GameController() : super(GameState.initial()) {
-    // 固定节拍推进游戏状态，保持数值稳定。
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => tick(1));
+    _simState = state;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    _lastSimMs = nowMs;
+    _lastUiSyncMs = nowMs;
+    _simTimer = Timer.periodic(
+      const Duration(milliseconds: _simTickMs),
+      (_) => _onSimTick(),
+    );
     _init();
   }
 
-  Timer? _timer;
+  Timer? _simTimer;
   Timer? _saveTimer;
   final SaveService _saveService = SaveService();
+  late GameState _simState;
+  int _lastSimMs = 0;
+  int _lastUiSyncMs = 0;
 
-  void tick(double dtSeconds) {
-    // 汇总研究/里程碑/常数的增益，并用同一帧时长完成产出与转化。
-    final effects = _currentEffects(state);
-    final constants = _currentConstants(state);
+  void _onSimTick() {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final timeWarpMultiplier = _isTimeWarpActive(state, nowMs) ? 2.0 : 1.0;
+    final dtSeconds = (nowMs - _lastSimMs) / 1000;
+    _lastSimMs = nowMs;
+    if (dtSeconds <= 0) {
+      return;
+    }
+    _simulate(dtSeconds);
+    if (nowMs - _lastUiSyncMs >= _uiSyncMs) {
+      state = _simState;
+      _lastUiSyncMs = nowMs;
+    }
+  }
+
+  void _simulate(double dtSeconds) {
+    final effects = _currentEffects(_simState);
+    final constants = _currentConstants(_simState);
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final timeWarpMultiplier =
+        _isTimeWarpActive(_simState, nowMs) ? 2.0 : 1.0;
     final effectiveDt =
         dtSeconds * constants.speedMultiplier * timeWarpMultiplier;
     final baseShardProd =
-        shardProductionPerSec(state, effects) * constants.productionMultiplier;
+        shardProductionPerSec(_simState, effects) *
+        constants.productionMultiplier;
     final baseEnergyProd =
-        energyProductionPerSec(state, effects) * constants.productionMultiplier;
+        energyProductionPerSec(_simState, effects) *
+        constants.productionMultiplier;
     final baseShardConvertCap =
-        shardConversionCapacityPerSec(state, effects) *
+        shardConversionCapacityPerSec(_simState, effects) *
         constants.productionMultiplier;
     final basePartSynthesisCap =
-        partSynthesisCapacityPerSec(state, effects) *
+        partSynthesisCapacityPerSec(_simState, effects) *
         constants.productionMultiplier;
-    final energyNeed = partSynthesisEnergyNeedPerSec(state, effects);
+    final energyNeed = partSynthesisEnergyNeedPerSec(_simState, effects);
     final energySplit = effectiveEnergySplit(
-      state: state,
+      state: _simState,
       energyProd: baseEnergyProd,
       energyNeed: energyNeed,
     );
@@ -73,36 +102,40 @@ class GameController extends StateNotifier<GameState> {
 
     final shardProd = baseShardProd * overloadFactor;
     final energyProd = baseEnergyProd * overloadFactor;
-    final overclockBoost = _isOverclockActive(state, nowMs)
-        ? overclockMultiplier(state)
+    final overclockBoost = _isOverclockActive(_simState, nowMs)
+        ? overclockMultiplier(_simState)
         : 1.0;
     final shardConvertCap = baseShardConvertCap * overloadFactor * overclockBoost;
     final partSynthesisCap = basePartSynthesisCap * overloadFactor * overclockBoost;
 
-    // 读取资源快照，避免中途被更新影响计算。
-    var shards = state.resource(ResourceType.shard);
-    var parts = state.resource(ResourceType.part);
-    var blueprints = state.resource(ResourceType.blueprint);
-    var laws = state.resource(ResourceType.law);
+    var shards = _simState.resource(ResourceType.shard);
+    var parts = _simState.resource(ResourceType.part);
+    var blueprints = _simState.resource(ResourceType.blueprint);
+    var laws = _simState.resource(ResourceType.law);
 
-    shards += shardProd * effectiveDt;
+    shards = shards + BigNumber.fromDouble(shardProd * effectiveDt);
 
     var shardConvertible = math.min(
       shardConvertCap * effectiveDt,
-      shardProd * state.shardToPartRatio * effectiveDt,
+      shardProd * _simState.shardToPartRatio * effectiveDt,
     );
 
-    if (state.keepShardReserve) {
-      final maxByReserve = math.max(0.0, shards - state.shardReserveMin);
+    if (_simState.keepShardReserve) {
+      final maxByReserve = math.max(
+        0.0,
+        shards.toDouble() - _simState.shardReserveMin,
+      );
       shardConvertible = math.min(shardConvertible, maxByReserve);
     }
 
-    shardConvertible = math.min(shardConvertible, shards);
-    shards -= shardConvertible;
-    parts +=
-        shardConvertible /
-        shardsPerPart *
-        effects.shardToPartEfficiencyMultiplier;
+    shardConvertible = math.min(shardConvertible, shards.toDouble());
+    shards = shards - BigNumber.fromDouble(shardConvertible);
+    parts = parts +
+        BigNumber.fromDouble(
+          shardConvertible /
+              shardsPerPart *
+              effects.shardToPartEfficiencyMultiplier,
+        );
 
     final energyAvailable = energyProd * energySplit * effectiveDt;
     final energyNeeded = energyNeed * effectiveDt;
@@ -111,23 +144,24 @@ class GameController extends StateNotifier<GameState> {
         : math.min(1.0, energyAvailable / energyNeeded);
 
     var partsConvertible = partSynthesisCap * efficiency * effectiveDt;
-    partsConvertible = math.min(partsConvertible, parts);
-    parts -= partsConvertible;
-    blueprints +=
-        partsConvertible /
-        partsPerBlueprint *
-        effects.blueprintProductionMultiplier;
+    partsConvertible = math.min(partsConvertible, parts.toDouble());
+    parts = parts - BigNumber.fromDouble(partsConvertible);
+    blueprints = blueprints +
+        BigNumber.fromDouble(
+          partsConvertible /
+              partsPerBlueprint *
+              effects.blueprintProductionMultiplier,
+        );
 
-    // 蓝图达到阈值时自动生成定律。
     final lawGain = lawsFromBlueprints(blueprints);
-    if (lawGain > 0) {
-      blueprints -= lawGain * lawThreshold;
-      laws += lawGain;
+    if (lawGain > BigNumber.zero) {
+      blueprints = blueprints - lawGain.timesDouble(lawThreshold);
+      laws = laws + lawGain;
     }
 
-    var nextState = state.copyWith(
+    var nextState = _simState.copyWith(
       resources: {
-        ...state.resources,
+        ..._simState.resources,
         ResourceType.shard: shards,
         ResourceType.part: parts,
         ResourceType.blueprint: blueprints,
@@ -135,14 +169,16 @@ class GameController extends StateNotifier<GameState> {
       },
     );
     nextState = _applyMilestones(nextState);
-    state = nextState;
+    _simState = nextState;
   }
 
   Future<void> _init() async {
-    // 启动时载入存档，并补算离线收益。
     final loaded = await _saveService.loadState();
     if (loaded != null) {
-      state = _applyMilestones(loaded);
+      _simState = _applyMilestones(loaded);
+      state = _simState;
+    } else {
+      _simState = state;
     }
 
     final lastSeenMs = await _saveService.loadLastSeenMs();
@@ -150,13 +186,12 @@ class GameController extends StateNotifier<GameState> {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final deltaSeconds = (nowMs - lastSeenMs) / 1000;
       if (deltaSeconds > 1) {
-        final constants = _currentConstants(state);
+        final constants = _currentConstants(_simState);
         final offlineSeconds = math.min(
           deltaSeconds,
           constants.offlineLimitSeconds,
         );
-        // 离线模拟前记录资源快照，便于生成收益日志。
-        final before = Map<ResourceType, double>.from(state.resources);
+        final before = Map<ResourceType, BigNumber>.from(_simState.resources);
         _simulateOffline(offlineSeconds);
         _recordOfflineGain(before);
       }
@@ -165,24 +200,25 @@ class GameController extends StateNotifier<GameState> {
     _saveTimer ??= Timer.periodic(const Duration(seconds: 5), (_) => _save());
   }
 
-  void _recordOfflineGain(Map<ResourceType, double> before) {
-    // 汇总离线期间的净增长，并写入日志。
+  void _recordOfflineGain(Map<ResourceType, BigNumber> before) {
     final gainedShard =
-        state.resource(ResourceType.shard) - (before[ResourceType.shard] ?? 0);
+        _simState.resource(ResourceType.shard) -
+        (before[ResourceType.shard] ?? BigNumber.zero);
     final gainedPart =
-        state.resource(ResourceType.part) - (before[ResourceType.part] ?? 0);
+        _simState.resource(ResourceType.part) -
+        (before[ResourceType.part] ?? BigNumber.zero);
     final gainedBlueprint =
-        state.resource(ResourceType.blueprint) -
-        (before[ResourceType.blueprint] ?? 0);
+        _simState.resource(ResourceType.blueprint) -
+        (before[ResourceType.blueprint] ?? BigNumber.zero);
 
     final parts = <String>[];
-    if (gainedShard > 0) {
+    if (gainedShard > BigNumber.zero) {
       parts.add('碎片 +${_formatNumber(gainedShard)}');
     }
-    if (gainedPart > 0) {
+    if (gainedPart > BigNumber.zero) {
       parts.add('零件 +${_formatNumber(gainedPart)}');
     }
-    if (gainedBlueprint > 0) {
+    if (gainedBlueprint > BigNumber.zero) {
       parts.add('蓝图 +${_formatNumber(gainedBlueprint)}');
     }
 
@@ -191,20 +227,28 @@ class GameController extends StateNotifier<GameState> {
     }
 
     final detail = parts.join('，');
-    state = state.addLogEntry('离线收益', detail);
+    _commitState(_simState.addLogEntry('离线收益', detail));
+  }
+
+  void _commitState(GameState next) {
+    _simState = next;
+    state = _simState;
+    _lastUiSyncMs = DateTime.now().millisecondsSinceEpoch;
   }
 
   void buy(String buildingId, int quantity) {
-    // 处理设施购买与成本扣除，支持一次购买最大数量。
     final def = buildingById[buildingId];
     if (def == null) {
       return;
     }
+    if (!_canBuyInChallenge(def)) {
+      return;
+    }
 
-    final effects = _currentEffects(state);
-    final currentCount = state.buildingCount(buildingId);
+    final effects = _currentEffects(_simState);
+    final currentCount = _simState.buildingCount(buildingId);
     final resourceType = def.costResource;
-    final currency = state.resource(resourceType);
+    final currency = _simState.resource(resourceType);
 
     final buyCount = quantity == -1
         ? maxAffordable(def, currentCount, currency, effects)
@@ -219,38 +263,44 @@ class GameController extends StateNotifier<GameState> {
       return;
     }
 
-    state = state.copyWith(
-      resources: {...state.resources, resourceType: currency - cost},
-      buildings: {...state.buildings, buildingId: currentCount + buyCount},
+    _commitState(
+      _simState.copyWith(
+        resources: {..._simState.resources, resourceType: currency - cost},
+        buildings: {..._simState.buildings, buildingId: currentCount + buyCount},
+      ),
     );
   }
 
   void setShardToPartRatio(double value) {
-    state = state.copyWith(shardToPartRatio: value.clamp(0.1, 0.9).toDouble());
+    _commitState(
+      _simState.copyWith(shardToPartRatio: value.clamp(0.1, 0.9).toDouble()),
+    );
   }
 
   void setKeepShardReserve(bool value) {
-    state = state.copyWith(keepShardReserve: value);
+    _commitState(_simState.copyWith(keepShardReserve: value));
   }
 
   void setEnergySplit(double value) {
-    state = state.copyWith(
-      energyToSynthesisRatio: value.clamp(0.1, 0.9).toDouble(),
+    _commitState(
+      _simState.copyWith(
+        energyToSynthesisRatio: value.clamp(0.1, 0.9).toDouble(),
+      ),
     );
   }
 
   void setEnergyPriorityMode(EnergyPriorityMode mode) {
-    state = state.copyWith(energyPriorityMode: mode);
+    _commitState(_simState.copyWith(energyPriorityMode: mode));
   }
 
   void placeBuildingInLayout(String buildingId, int index) {
-    if (index < 0 || index >= state.layoutGrid.length) {
+    if (index < 0 || index >= _simState.layoutGrid.length) {
       return;
     }
     if (!buildingById.containsKey(buildingId)) {
       return;
     }
-    final layout = List<String?>.from(state.layoutGrid);
+    final layout = List<String?>.from(_simState.layoutGrid);
     final placedCounts = _placedCounts(layout);
     final current = layout[index];
     if (current == buildingId) {
@@ -260,23 +310,23 @@ class GameController extends StateNotifier<GameState> {
       placedCounts[current] = math.max(0, (placedCounts[current] ?? 1) - 1);
       layout[index] = null;
     }
-    final totalOwned = state.buildingCount(buildingId);
+    final totalOwned = _simState.buildingCount(buildingId);
     final used = placedCounts[buildingId] ?? 0;
     if (totalOwned - used <= 0) {
-      state = state.copyWith(layoutGrid: layout);
+      _commitState(_simState.copyWith(layoutGrid: layout));
       return;
     }
     layout[index] = buildingId;
-    state = state.copyWith(layoutGrid: layout);
+    _commitState(_simState.copyWith(layoutGrid: layout));
   }
 
   void clearLayoutSlot(int index) {
-    if (index < 0 || index >= state.layoutGrid.length) {
+    if (index < 0 || index >= _simState.layoutGrid.length) {
       return;
     }
-    final layout = List<String?>.from(state.layoutGrid);
+    final layout = List<String?>.from(_simState.layoutGrid);
     layout[index] = null;
-    state = state.copyWith(layoutGrid: layout);
+    _commitState(_simState.copyWith(layoutGrid: layout));
   }
 
   Map<String, int> _placedCounts(List<String?> layout) {
@@ -291,94 +341,159 @@ class GameController extends StateNotifier<GameState> {
   }
 
   void buyResearch(String researchId) {
-    // 校验前置研究与蓝图成本，成功后解锁效果。
     final def = researchById[researchId];
     if (def == null) {
       return;
     }
-    if (state.researchPurchased.contains(def.id)) {
+    if (_simState.researchPurchased.contains(def.id)) {
       return;
     }
-    if (!researchPrerequisitesMet(state, def)) {
+    if (!researchPrerequisitesMet(_simState, def)) {
       return;
     }
-    final currency = state.resource(ResourceType.blueprint);
-    if (currency < def.costBlueprints) {
+    final currency = _simState.resource(ResourceType.blueprint);
+    final cost = BigNumber.fromDouble(def.costBlueprints);
+    if (currency < cost) {
       return;
     }
 
-    final updatedResearch = {...state.researchPurchased, def.id};
-    state = state.copyWith(
-      resources: {
-        ...state.resources,
-        ResourceType.blueprint: currency - def.costBlueprints,
-      },
-      researchPurchased: updatedResearch,
+    final updatedResearch = {..._simState.researchPurchased, def.id};
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.blueprint: currency - cost,
+        },
+        researchPurchased: updatedResearch,
+      ),
     );
 
-    state = state.addLogEntry('研究完成', '已解锁 ${researchTitle(def.id)}');
+    _commitState(_simState.addLogEntry('研究完成', '已解锁 ${researchTitle(def.id)}'));
   }
 
   void buyConstantUpgrade(String upgradeId) {
-    // 常数强化为永久升级，直接写入状态。
     final def = constantUpgradeById[upgradeId];
     if (def == null) {
       return;
     }
 
-    final currentLevel = state.constantUpgrades[upgradeId] ?? 0;
+    final currentLevel = _simState.constantUpgrades[upgradeId] ?? 0;
     if (currentLevel >= def.maxLevel) {
       return;
     }
 
-    final cost = constantUpgradeCost(def, currentLevel);
-    final currency = state.resource(ResourceType.constant);
+    final cost = BigNumber.fromDouble(constantUpgradeCost(def, currentLevel));
+    final currency = _simState.resource(ResourceType.constant);
     if (currency < cost) {
       return;
     }
 
-    state = state.copyWith(
-      resources: {...state.resources, ResourceType.constant: currency - cost},
-      constantUpgrades: {
-        ...state.constantUpgrades,
-        upgradeId: currentLevel + 1,
-      },
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.constant: currency - cost,
+        },
+        constantUpgrades: {
+          ..._simState.constantUpgrades,
+          upgradeId: currentLevel + 1,
+        },
+      ),
     );
 
-    state = state.addLogEntry('常数强化', '${def.name} +1');
+    _commitState(_simState.addLogEntry('常数强化', '${def.name} +1'));
+  }
+
+  void startChallenge(String challengeId) {
+    if (_simState.activeChallengeId != null) {
+      return;
+    }
+    if (_simState.completedChallenges.contains(challengeId)) {
+      return;
+    }
+    final challenge = prestigeChallenges.firstWhere(
+      (def) => def.id == challengeId,
+      orElse: () => const PrestigeChallenge(
+        id: '',
+        title: '',
+        description: '',
+        rewardUnlockId: '',
+        requirementMet: _alwaysFalse,
+      ),
+    );
+    if (challenge.id.isEmpty) {
+      return;
+    }
+    final base = GameState.initial();
+    final nextState = base.copyWith(
+      resources: {
+        ...base.resources,
+        ResourceType.constant: _simState.resource(ResourceType.constant),
+      },
+      constantUpgrades: {..._simState.constantUpgrades},
+      milestonesAchieved: _simState.milestonesAchieved,
+      logEntries: _simState.logEntries,
+      activeChallengeId: challengeId,
+      completedChallenges: {..._simState.completedChallenges},
+      permanentUnlocks: {..._simState.permanentUnlocks},
+    );
+    _commitState(nextState.addLogEntry('挑战升维', '进入挑战：${challenge.title}'));
+  }
+
+  void abandonChallenge() {
+    if (_simState.activeChallengeId == null) {
+      return;
+    }
+    final base = GameState.initial();
+    final nextState = base.copyWith(
+      resources: {
+        ...base.resources,
+        ResourceType.constant: _simState.resource(ResourceType.constant),
+      },
+      constantUpgrades: {..._simState.constantUpgrades},
+      milestonesAchieved: _simState.milestonesAchieved,
+      logEntries: _simState.logEntries,
+      activeChallengeId: null,
+      completedChallenges: {..._simState.completedChallenges},
+      permanentUnlocks: {..._simState.permanentUnlocks},
+    );
+    _commitState(nextState.addLogEntry('挑战升维', '已放弃当前挑战'));
   }
 
   void activateTimeWarp() {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    if (nowMs < state.timeWarpCooldownEndsAtMs) {
+    if (nowMs < _simState.timeWarpCooldownEndsAtMs) {
       return;
     }
-    final durationMs = timeWarpDurationMs(state);
-    final cooldownMs = timeWarpCooldownMs(state);
-    state = state.copyWith(
-      timeWarpEndsAtMs: nowMs + durationMs,
-      timeWarpCooldownEndsAtMs: nowMs + cooldownMs,
+    final durationMs = timeWarpDurationMs(_simState);
+    final cooldownMs = timeWarpCooldownMs(_simState);
+    _commitState(
+      _simState.copyWith(
+        timeWarpEndsAtMs: nowMs + durationMs,
+        timeWarpCooldownEndsAtMs: nowMs + cooldownMs,
+      ),
     );
-    state = state.addLogEntry('主动技能', '时间扭曲启动');
+    _commitState(_simState.addLogEntry('主动技能', '时间扭曲启动'));
   }
 
   void activateOverclock() {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    if (nowMs < state.overclockCooldownEndsAtMs) {
+    if (nowMs < _simState.overclockCooldownEndsAtMs) {
       return;
     }
-    final durationMs = overclockDurationMs(state);
-    final cooldownMs = overclockCooldownMs(state);
-    state = state.copyWith(
-      overclockEndsAtMs: nowMs + durationMs,
-      overclockCooldownEndsAtMs: nowMs + cooldownMs,
+    final durationMs = overclockDurationMs(_simState);
+    final cooldownMs = overclockCooldownMs(_simState);
+    _commitState(
+      _simState.copyWith(
+        overclockEndsAtMs: nowMs + durationMs,
+        overclockCooldownEndsAtMs: nowMs + cooldownMs,
+      ),
     );
-    state = state.addLogEntry('主动技能', '手动超频启动');
+    _commitState(_simState.addLogEntry('主动技能', '手动超频启动'));
   }
 
   int overclockDurationMs(GameState state) {
-    return _overclockDurationMs +
-        state.overclockLevel * _overclockDurationPerLevelMs;
+    return _overclockDurationMs + state.overclockLevel * _overclockDurationPerLevelMs;
   }
 
   int overclockCooldownMs(GameState state) {
@@ -393,31 +508,37 @@ class GameController extends StateNotifier<GameState> {
     return 1.4 + state.overclockLevel * 0.15;
   }
 
-  double overclockUpgradeCost(int level) {
-    return _overclockUpgradeBaseCost *
-        math.pow(_overclockUpgradeCostGrowth, level).toDouble();
+  BigNumber overclockUpgradeCost(int level) {
+    return BigNumber.fromDouble(
+      _overclockUpgradeBaseCost *
+          math.pow(_overclockUpgradeCostGrowth, level).toDouble(),
+    );
   }
 
   void buyOverclockUpgrade() {
-    final level = state.overclockLevel;
+    final level = _simState.overclockLevel;
     if (level >= _overclockMaxLevel) {
       return;
     }
     final cost = overclockUpgradeCost(level);
-    final currency = state.resource(ResourceType.constant);
+    final currency = _simState.resource(ResourceType.constant);
     if (currency < cost) {
       return;
     }
-    state = state.copyWith(
-      resources: {...state.resources, ResourceType.constant: currency - cost},
-      overclockLevel: level + 1,
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.constant: currency - cost,
+        },
+        overclockLevel: level + 1,
+      ),
     );
-    state = state.addLogEntry('技能强化', '手动超频 Lv.${level + 1}');
+    _commitState(_simState.addLogEntry('技能强化', '手动超频 Lv.${level + 1}'));
   }
 
   int timeWarpDurationMs(GameState state) {
-    return _timeWarpDurationMs +
-        state.timeWarpLevel * _timeWarpDurationPerLevelMs;
+    return _timeWarpDurationMs + state.timeWarpLevel * _timeWarpDurationPerLevelMs;
   }
 
   int timeWarpCooldownMs(GameState state) {
@@ -428,30 +549,37 @@ class GameController extends StateNotifier<GameState> {
 
   int timeWarpMaxLevel() => _timeWarpMaxLevel;
 
-  double timeWarpUpgradeCost(int level) {
-    return _timeWarpUpgradeBaseCost *
-        math.pow(_timeWarpUpgradeCostGrowth, level).toDouble();
+  BigNumber timeWarpUpgradeCost(int level) {
+    return BigNumber.fromDouble(
+      _timeWarpUpgradeBaseCost *
+          math.pow(_timeWarpUpgradeCostGrowth, level).toDouble(),
+    );
   }
 
   void buyTimeWarpUpgrade() {
-    final level = state.timeWarpLevel;
+    final level = _simState.timeWarpLevel;
     if (level >= _timeWarpMaxLevel) {
       return;
     }
     final cost = timeWarpUpgradeCost(level);
-    final currency = state.resource(ResourceType.constant);
+    final currency = _simState.resource(ResourceType.constant);
     if (currency < cost) {
       return;
     }
-    state = state.copyWith(
-      resources: {...state.resources, ResourceType.constant: currency - cost},
-      timeWarpLevel: level + 1,
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.constant: currency - cost,
+        },
+        timeWarpLevel: level + 1,
+      ),
     );
-    state = state.addLogEntry('技能强化', '时间扭曲 Lv.${level + 1}');
+    _commitState(_simState.addLogEntry('技能强化', '时间扭曲 Lv.${level + 1}'));
   }
 
   String exportSave() {
-    return _saveService.exportState(state);
+    return _saveService.exportState(_simState);
   }
 
   Future<bool> importSave(String jsonText) async {
@@ -459,25 +587,24 @@ class GameController extends StateNotifier<GameState> {
     if (imported == null) {
       return false;
     }
-    state = imported.addLogEntry('存档导入', '已载入存档');
-    await _saveService.saveState(state);
+    _commitState(imported.addLogEntry('存档导入', '已载入存档'));
+    await _saveService.saveState(_simState);
     return true;
   }
 
   Future<void> _save() async {
-    await _saveService.saveState(state);
+    await _saveService.saveState(_simState);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _simTimer?.cancel();
     _saveTimer?.cancel();
     _save();
     super.dispose();
   }
 
   ResearchEffects _currentEffects(GameState state) {
-    // 合并研究与里程碑效果，避免重复计算。
     final research = computeResearchEffects(state);
     final milestones = computeMilestoneEffects(state);
     final synergy = computeSynergyEffects(state);
@@ -485,12 +612,19 @@ class GameController extends StateNotifier<GameState> {
   }
 
   ConstantEffects _currentConstants(GameState state) {
-    // 常数强化带来的全局倍率与离线上限。
-    return computeConstantEffects(state);
+    final base = computeConstantEffects(state);
+    final bonus = permanentProductionBonus(state);
+    if (bonus <= 0) {
+      return base;
+    }
+    return ConstantEffects(
+      productionMultiplier: base.productionMultiplier * (1 + bonus),
+      speedMultiplier: base.speedMultiplier,
+      offlineLimitSeconds: base.offlineLimitSeconds,
+    );
   }
 
   GameState _applyMilestones(GameState current) {
-    // 解锁新里程碑并记录日志。
     final newly = findNewMilestones(current);
     if (newly.isEmpty) {
       return current;
@@ -502,29 +636,30 @@ class GameController extends StateNotifier<GameState> {
       },
     );
     for (final def in newly) {
-      next = next.addLogEntry('里程碑达成', '${def.title}：${def.description}');
+      next = next.addLogEntry('里程碑达成', '${def.title}，${def.description}');
     }
     return next;
   }
 
   void _simulateOffline(double seconds) {
-    // 离线期间按总秒数一次性推进资源，避免逐秒循环。
-    final effects = _currentEffects(state);
-    final constants = _currentConstants(state);
+    final effects = _currentEffects(_simState);
+    final constants = _currentConstants(_simState);
     final effectiveSeconds = seconds * constants.speedMultiplier;
     final baseShardProd =
-        shardProductionPerSec(state, effects) * constants.productionMultiplier;
+        shardProductionPerSec(_simState, effects) *
+        constants.productionMultiplier;
     final baseEnergyProd =
-        energyProductionPerSec(state, effects) * constants.productionMultiplier;
+        energyProductionPerSec(_simState, effects) *
+        constants.productionMultiplier;
     final baseShardConvertCap =
-        shardConversionCapacityPerSec(state, effects) *
+        shardConversionCapacityPerSec(_simState, effects) *
         constants.productionMultiplier;
     final basePartSynthesisCap =
-        partSynthesisCapacityPerSec(state, effects) *
+        partSynthesisCapacityPerSec(_simState, effects) *
         constants.productionMultiplier;
-    final energyNeed = partSynthesisEnergyNeedPerSec(state, effects);
+    final energyNeed = partSynthesisEnergyNeedPerSec(_simState, effects);
     final energySplit = effectiveEnergySplit(
-      state: state,
+      state: _simState,
       energyProd: baseEnergyProd,
       energyNeed: energyNeed,
     );
@@ -538,32 +673,36 @@ class GameController extends StateNotifier<GameState> {
     final shardConvertCap = baseShardConvertCap * overloadFactor;
     final partSynthesisCap = basePartSynthesisCap * overloadFactor;
 
-    var shards = state.resource(ResourceType.shard);
-    var parts = state.resource(ResourceType.part);
-    var blueprints = state.resource(ResourceType.blueprint);
-    var laws = state.resource(ResourceType.law);
+    var shards = _simState.resource(ResourceType.shard);
+    var parts = _simState.resource(ResourceType.part);
+    var blueprints = _simState.resource(ResourceType.blueprint);
+    var laws = _simState.resource(ResourceType.law);
 
-    shards += shardProd * effectiveSeconds;
+    shards = shards + BigNumber.fromDouble(shardProd * effectiveSeconds);
 
     var shardConvertible = math.min(
       shardConvertCap * effectiveSeconds,
-      shardProd * state.shardToPartRatio * effectiveSeconds,
+      shardProd * _simState.shardToPartRatio * effectiveSeconds,
     );
 
-    if (state.keepShardReserve) {
-      final maxByReserve = math.max(0.0, shards - state.shardReserveMin);
+    if (_simState.keepShardReserve) {
+      final maxByReserve = math.max(
+        0.0,
+        shards.toDouble() - _simState.shardReserveMin,
+      );
       shardConvertible = math.min(shardConvertible, maxByReserve);
     }
 
-    shardConvertible = math.min(shardConvertible, shards);
-    shards -= shardConvertible;
-    parts +=
-        shardConvertible /
-        shardsPerPart *
-        effects.shardToPartEfficiencyMultiplier;
+    shardConvertible = math.min(shardConvertible, shards.toDouble());
+    shards = shards - BigNumber.fromDouble(shardConvertible);
+    parts = parts +
+        BigNumber.fromDouble(
+          shardConvertible /
+              shardsPerPart *
+              effects.shardToPartEfficiencyMultiplier,
+        );
 
-    // 研究解锁后允许离线合成蓝图。
-    if (offlineSynthesisUnlocked(state)) {
+    if (offlineSynthesisUnlocked(_simState)) {
       final energyAvailable = energyProd * energySplit * effectiveSeconds;
       final energyNeeded = energyNeed * effectiveSeconds;
       final efficiency = energyNeeded <= 0
@@ -571,23 +710,25 @@ class GameController extends StateNotifier<GameState> {
           : math.min(1.0, energyAvailable / energyNeeded);
 
       var partsConvertible = partSynthesisCap * efficiency * effectiveSeconds;
-      partsConvertible = math.min(partsConvertible, parts);
-      parts -= partsConvertible;
-      blueprints +=
-          partsConvertible /
-          partsPerBlueprint *
-          effects.blueprintProductionMultiplier;
+      partsConvertible = math.min(partsConvertible, parts.toDouble());
+      parts = parts - BigNumber.fromDouble(partsConvertible);
+      blueprints = blueprints +
+          BigNumber.fromDouble(
+            partsConvertible /
+                partsPerBlueprint *
+                effects.blueprintProductionMultiplier,
+          );
     }
 
     final lawGain = lawsFromBlueprints(blueprints);
-    if (lawGain > 0) {
-      blueprints -= lawGain * lawThreshold;
-      laws += lawGain;
+    if (lawGain > BigNumber.zero) {
+      blueprints = blueprints - lawGain.timesDouble(lawThreshold);
+      laws = laws + lawGain;
     }
 
-    var nextState = state.copyWith(
+    var nextState = _simState.copyWith(
       resources: {
-        ...state.resources,
+        ..._simState.resources,
         ResourceType.shard: shards,
         ResourceType.part: parts,
         ResourceType.blueprint: blueprints,
@@ -595,35 +736,53 @@ class GameController extends StateNotifier<GameState> {
       },
     );
     nextState = _applyMilestones(nextState);
-    state = nextState;
+    _commitState(nextState);
   }
 
-  double prestigePreview() {
-    return constantsFromLaws(state.resource(ResourceType.law));
+  BigNumber prestigePreview() {
+    return constantsFromLaws(_simState.resource(ResourceType.law));
   }
 
   bool canPrestige() {
-    return state.resource(ResourceType.law) >= 1;
+    if (_simState.resource(ResourceType.law) < BigNumber.fromInt(1)) {
+      return false;
+    }
+    final challenge = _activeChallenge();
+    if (challenge == null) {
+      return true;
+    }
+    return challenge.requirementMet(_simState);
   }
 
   void prestige() {
-    // 升维重置进度，保留常数与永久强化。
     if (!canPrestige()) {
       return;
     }
     final gain = prestigePreview();
-    if (gain <= 0) {
+    if (gain <= BigNumber.zero) {
       return;
     }
+    final challenge = _activeChallenge();
     final base = GameState.initial();
-    final retainedConstants = state.resource(ResourceType.constant) + gain;
+    final retainedConstants = _simState.resource(ResourceType.constant) + gain;
+    final completedChallenges = {..._simState.completedChallenges};
+    final permanentUnlocks = {..._simState.permanentUnlocks};
+    if (challenge != null) {
+      completedChallenges.add(challenge.id);
+      permanentUnlocks.add(challenge.rewardUnlockId);
+    }
     final nextState = base.copyWith(
       resources: {...base.resources, ResourceType.constant: retainedConstants},
-      constantUpgrades: {...state.constantUpgrades},
-      milestonesAchieved: state.milestonesAchieved,
-      logEntries: state.logEntries,
+      constantUpgrades: {..._simState.constantUpgrades},
+      milestonesAchieved: _simState.milestonesAchieved,
+      logEntries: _simState.logEntries,
+      activeChallengeId: null,
+      completedChallenges: completedChallenges,
+      permanentUnlocks: permanentUnlocks,
     );
-    state = nextState.addLogEntry('升维完成', '获得常数 +${_formatNumber(gain)}');
+    _commitState(
+      nextState.addLogEntry('升维完成', '获得常数 +${_formatNumber(gain)}'),
+    );
   }
 
   bool _isTimeWarpActive(GameState state, int nowMs) {
@@ -633,6 +792,27 @@ class GameController extends StateNotifier<GameState> {
   bool _isOverclockActive(GameState state, int nowMs) {
     return state.overclockEndsAtMs > nowMs;
   }
+
+  PrestigeChallenge? _activeChallenge() {
+    final id = _simState.activeChallengeId;
+    if (id == null) {
+      return null;
+    }
+    for (final def in prestigeChallenges) {
+      if (def.id == id) {
+        return def;
+      }
+    }
+    return null;
+  }
+
+  bool _canBuyInChallenge(BuildingDefinition def) {
+    final challenge = _activeChallenge();
+    if (challenge == null || challenge.allowedBuildingTypes == null) {
+      return true;
+    }
+    return challenge.allowedBuildingTypes!.contains(def.type);
+  }
 }
 
 final gameControllerProvider = StateNotifierProvider<GameController, GameState>(
@@ -641,6 +821,8 @@ final gameControllerProvider = StateNotifierProvider<GameController, GameState>(
   },
 );
 
-String _formatNumber(double value) {
+String _formatNumber(Object value) {
   return formatNumber(value);
 }
+
+bool _alwaysFalse(GameState state) => false;

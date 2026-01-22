@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 
+import 'big_number.dart';
 import 'game_state.dart';
 import 'research_definitions.dart';
 
@@ -25,7 +26,8 @@ final List<MilestoneDefinition> milestoneDefinitions = [
     id: 'milestone_shard_10000',
     title: '碎片突破',
     description: '碎片达到 1 万',
-    isAchieved: (state) => state.resource(ResourceType.shard) >= 10000,
+    isAchieved: (state) =>
+        state.resource(ResourceType.shard) >= BigNumber.fromDouble(10000),
     effects: ResearchEffects.base.copyWith(
       shardProductionMultiplier: 1.1,
     ),
@@ -34,7 +36,8 @@ final List<MilestoneDefinition> milestoneDefinitions = [
     id: 'milestone_part_100',
     title: '零件起步',
     description: '零件达到 100',
-    isAchieved: (state) => state.resource(ResourceType.part) >= 100,
+    isAchieved: (state) =>
+        state.resource(ResourceType.part) >= BigNumber.fromDouble(100),
     effects: ResearchEffects.base.copyWith(
       shardToPartEfficiencyMultiplier: 1.1,
     ),
@@ -43,7 +46,8 @@ final List<MilestoneDefinition> milestoneDefinitions = [
     id: 'milestone_blueprint_10',
     title: '蓝图成形',
     description: '蓝图达到 10',
-    isAchieved: (state) => state.resource(ResourceType.blueprint) >= 10,
+    isAchieved: (state) =>
+        state.resource(ResourceType.blueprint) >= BigNumber.fromDouble(10),
     effects: ResearchEffects.base.copyWith(
       blueprintProductionMultiplier: 1.1,
     ),
@@ -60,7 +64,6 @@ final List<MilestoneDefinition> milestoneDefinitions = [
 ];
 
 ResearchEffects computeMilestoneEffects(GameState state) {
-  // 汇总已达成里程碑的效果。
   var effects = ResearchEffects.base;
   for (final def in milestoneDefinitions) {
     if (state.milestonesAchieved.contains(def.id)) {
@@ -71,7 +74,6 @@ ResearchEffects computeMilestoneEffects(GameState state) {
 }
 
 List<MilestoneDefinition> findNewMilestones(GameState state) {
-  // 找出尚未记录但已满足条件的里程碑。
   final newly = <MilestoneDefinition>[];
   for (final def in milestoneDefinitions) {
     if (!state.milestonesAchieved.contains(def.id) && def.isAchieved(state)) {

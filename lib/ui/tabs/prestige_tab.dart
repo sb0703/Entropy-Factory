@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../game/big_number.dart';
 import '../../game/constant_upgrades.dart';
 import '../../game/game_controller.dart';
 import '../../game/game_state.dart';
-import '../../game/prestige_rules.dart';
 import '../../game/number_format.dart';
+import '../../game/prestige_challenges.dart';
+import '../../game/prestige_rules.dart';
 
 class PrestigeTab extends ConsumerWidget {
   const PrestigeTab({super.key});
@@ -22,8 +24,11 @@ class PrestigeTab extends ConsumerWidget {
     final constants = state.resource(ResourceType.constant);
     final preview = controller.prestigePreview();
     final canPrestige = controller.canPrestige();
+    final activeChallengeId = state.activeChallengeId;
+    final completedChallenges = state.completedChallenges;
+    final moduleSlots = unlockedModuleSlots(state);
+    final permanentBonus = permanentProductionBonus(state);
 
-    // 升维信息、常数强化与确认入口集中在同一页面。
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
@@ -101,6 +106,43 @@ class PrestigeTab extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
+                  '永久解锁',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '永久模块槽：$moduleSlots',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF8FA3BF),
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '永久产出加成：+${(permanentBonus * 100).toStringAsFixed(0)}%',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFFF5C542),
+                      ),
+                ),
+                const SizedBox(height: 10),
+                for (final unlock in permanentUnlockDefinitions)
+                  _UnlockTile(
+                    unlock: unlock,
+                    unlocked: state.permanentUnlocks.contains(unlock.id),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   '升维将重置',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
@@ -111,6 +153,47 @@ class PrestigeTab extends ConsumerWidget {
                 const _Bullet(text: '大部分设施'),
                 const _Bullet(text: '配比设置'),
                 const _Bullet(text: '已购研究'),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '挑战升维',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                if (activeChallengeId != null)
+                  _ActiveChallengeBanner(
+                    challenge: prestigeChallenges.firstWhere(
+                      (def) => def.id == activeChallengeId,
+                      orElse: () => prestigeChallenges.first,
+                    ),
+                    onAbandon: controller.abandonChallenge,
+                  ),
+                if (activeChallengeId == null)
+                  Text(
+                    '完成挑战可获得永久解锁奖励。',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF8FA3BF),
+                        ),
+                  ),
+                const SizedBox(height: 12),
+                for (final challenge in prestigeChallenges)
+                  _ChallengeTile(
+                    challenge: challenge,
+                    isActive: activeChallengeId == challenge.id,
+                    isCompleted: completedChallenges.contains(challenge.id),
+                    onStart: () => controller.startChallenge(challenge.id),
+                  ),
               ],
             ),
           ),
@@ -271,12 +354,12 @@ class _ConstantUpgradeTile extends StatelessWidget {
 
   final ConstantUpgradeDefinition def;
   final int level;
-  final double available;
+  final BigNumber available;
   final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
-    final cost = constantUpgradeCost(def, level);
+    final cost = BigNumber.fromDouble(constantUpgradeCost(def, level));
     final isMax = level >= def.maxLevel;
     final canBuy = !isMax && available >= cost;
     final costText = isMax ? '已满级' : '消耗常数：${_formatNumber(cost)}';
@@ -344,8 +427,8 @@ class _ConstantUpgradeTile extends StatelessWidget {
 
 Future<void> _showPrestigeDialog(
   BuildContext context, {
-  required double laws,
-  required double preview,
+  required BigNumber laws,
+  required BigNumber preview,
   required VoidCallback onConfirm,
 }) {
   return showDialog<void>(
@@ -544,6 +627,183 @@ class _PrestigeTransitionState extends State<_PrestigeTransition> {
   }
 }
 
-String _formatNumber(double value) {
-  return formatNumber(value);
+String _formatNumber(Object value) {
+    return formatNumber(value);
+}
+
+class _UnlockTile extends StatelessWidget {
+  const _UnlockTile({
+    required this.unlock,
+    required this.unlocked,
+  });
+
+  final PermanentUnlock unlock;
+  final bool unlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1B2D),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: unlocked ? const Color(0xFF5CE1E6) : const Color(0xFF22324A),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            unlock.title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: unlocked
+                      ? const Color(0xFF5CE1E6)
+                      : const Color(0xFFE6EDF7),
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            unlock.description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF8FA3BF),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChallengeTile extends StatelessWidget {
+  const _ChallengeTile({
+    required this.challenge,
+    required this.isActive,
+    required this.isCompleted,
+    required this.onStart,
+  });
+
+  final PrestigeChallenge challenge;
+  final bool isActive;
+  final bool isCompleted;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusText = isCompleted
+        ? '已完成'
+        : (isActive ? '进行中' : '未开始');
+    final canStart = !isCompleted && !isActive;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1B2D),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF22324A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  challenge.title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              Text(
+                statusText,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: isCompleted
+                          ? const Color(0xFF8BE4B4)
+                          : (isActive
+                              ? const Color(0xFFF5C542)
+                              : const Color(0xFF8FA3BF)),
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            challenge.description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF8FA3BF),
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '奖励：${permanentUnlockById[challenge.rewardUnlockId]?.title ?? '永久模块槽'}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF8BE4B4),
+                ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton(
+              onPressed: canStart ? onStart : null,
+              child: Text(isActive ? '进行中' : '开始挑战'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActiveChallengeBanner extends StatelessWidget {
+  const _ActiveChallengeBanner({
+    required this.challenge,
+    required this.onAbandon,
+  });
+
+  final PrestigeChallenge challenge;
+  final VoidCallback onAbandon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2B4B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF5C542)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '当前挑战：${challenge.title}',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFF5C542),
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            challenge.description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFFB4C0D3),
+                ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: onAbandon,
+              child: const Text('放弃挑战'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

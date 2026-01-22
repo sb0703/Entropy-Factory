@@ -1,16 +1,50 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/game_state.dart';
 
 class SaveService {
+  static const _boxName = 'save';
   static const _stateKey = 'game_state';
   static const _lastSeenKey = 'game_last_seen';
+  static const _migratedKey = 'save_migrated';
+
+  static Future<void> init() async {
+    await Hive.openBox(_boxName);
+    final service = SaveService();
+    await service._migrateFromSharedPreferences();
+  }
+
+  Box get _box => Hive.box(_boxName);
+
+  Future<void> _migrateFromSharedPreferences() async {
+    try {
+      if (_box.get(_migratedKey) == true) {
+        return;
+      }
+      if (_box.get(_stateKey) != null) {
+        await _box.put(_migratedKey, true);
+        return;
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final jsonText = prefs.getString(_stateKey);
+      final lastSeen = prefs.getInt(_lastSeenKey);
+      if (jsonText != null && jsonText.isNotEmpty) {
+        await _box.put(_stateKey, jsonText);
+      }
+      if (lastSeen != null) {
+        await _box.put(_lastSeenKey, lastSeen);
+      }
+      await _box.put(_migratedKey, true);
+    } on PlatformException {
+      return;
+    }
+  }
 
   String exportState(GameState state) {
-    // 将状态序列化为 JSON，供导出与持久化使用。
     return jsonEncode(state.toJson());
   }
 
@@ -27,12 +61,10 @@ class SaveService {
   }
 
   Future<void> saveState(GameState state) async {
-    // 同步保存游戏状态与最后活跃时间戳。
     try {
-      final prefs = await SharedPreferences.getInstance();
       final jsonText = exportState(state);
-      await prefs.setString(_stateKey, jsonText);
-      await prefs.setInt(
+      await _box.put(_stateKey, jsonText);
+      await _box.put(
         _lastSeenKey,
         DateTime.now().millisecondsSinceEpoch,
       );
@@ -42,10 +74,8 @@ class SaveService {
   }
 
   Future<GameState?> loadState() async {
-    // 读取并反序列化存档。
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonText = prefs.getString(_stateKey);
+      final jsonText = _box.get(_stateKey) as String?;
       if (jsonText == null || jsonText.isEmpty) {
         return null;
       }
@@ -56,10 +86,12 @@ class SaveService {
   }
 
   Future<int?> loadLastSeenMs() async {
-    // 用于离线收益补算的时间戳。
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt(_lastSeenKey);
+      final value = _box.get(_lastSeenKey);
+      if (value is int) {
+        return value;
+      }
+      return null;
     } on PlatformException {
       return null;
     }

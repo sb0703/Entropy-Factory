@@ -107,7 +107,9 @@ class _ParticleLayerState extends ConsumerState<ParticleLayer>
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     controller.purgeExpired(nowMs);
     final renderBox = context.findRenderObject() as RenderBox?;
-    final origin = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
+    final origin = (renderBox != null && renderBox.hasSize)
+        ? renderBox.localToGlobal(Offset.zero)
+        : Offset.zero;
 
     return IgnorePointer(
       child: CustomPaint(
@@ -116,7 +118,7 @@ class _ParticleLayerState extends ConsumerState<ParticleLayer>
           nowMs: nowMs,
           origin: origin,
         ),
-        size: Size.infinite,
+        child: const SizedBox.expand(),
       ),
     );
   }
