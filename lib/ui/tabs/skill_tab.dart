@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../game/big_number.dart';
@@ -42,9 +42,9 @@ class _SkillTabState extends ConsumerState<SkillTab> {
                             child: _SkillGrid(
                               skills: skills,
                               selectedId: selected?.id,
-                              onSelect: (id) {
+                              onSelect: (def) {
                                 setState(() {
-                                  _selectedId = id;
+                                  _selectedId = def.id;
                                 });
                               },
                               state: gameState,
@@ -61,30 +61,46 @@ class _SkillTabState extends ConsumerState<SkillTab> {
                           ),
                         ],
                       )
-                    : Column(
-                        children: [
-                          Expanded(
-                            child: _SkillGrid(
-                              skills: skills,
-                              selectedId: selected?.id,
-                              onSelect: (id) {
-                                setState(() {
-                                  _selectedId = id;
-                                });
-                              },
-                              state: gameState,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _SkillDetailPanel(
-                            skill: selected,
-                            state: gameState,
-                            controller: controller,
-                          ),
-                        ],
+                    : _SkillGrid(
+                        skills: skills,
+                        selectedId: selected?.id,
+                        onSelect: (def) {
+                          setState(() {
+                            _selectedId = def.id;
+                          });
+                          _showSkillDetailSheet(def);
+                        },
+                        state: gameState,
                       ),
               ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showSkillDetailSheet(SkillDefinition skill) async {
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF0B1321),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: _SkillDetailPanel(
+              skill: skill,
+              state: ref.read(gameControllerProvider),
+              controller: ref.read(gameControllerProvider.notifier),
+            ),
           ),
         );
       },
@@ -125,16 +141,18 @@ class _SkillHeader extends StatelessWidget {
       children: [
         Text(
           '技能树',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
         Text(
           '解锁后需要装配到技能槽中，主动技能可在任意页面快速启用',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: const Color(0xFF8FA3BF)),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -158,9 +176,10 @@ class _SkillHeader extends StatelessWidget {
         else
           Text(
             '当前未装配技能',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: const Color(0xFF8FA3BF)),
           ),
         const SizedBox(height: 12),
         Card(
@@ -172,8 +191,8 @@ class _SkillHeader extends StatelessWidget {
                   child: Text(
                     '兑换技能点：消耗 ${_formatNumber(skillPointCost)} 蓝图',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF8FA3BF),
-                    ),
+                          color: const Color(0xFF8FA3BF),
+                        ),
                   ),
                 ),
                 FilledButton(
@@ -206,9 +225,10 @@ class _InfoChip extends StatelessWidget {
       ),
       child: Text(
         '$label：$value',
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: const Color(0xFF8FA3BF)),
       ),
     );
   }
@@ -224,7 +244,7 @@ class _SkillGrid extends StatelessWidget {
 
   final List<SkillDefinition> skills;
   final String? selectedId;
-  final ValueChanged<String> onSelect;
+  final ValueChanged<SkillDefinition> onSelect;
   final GameState state;
 
   @override
@@ -234,7 +254,7 @@ class _SkillGrid extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 1.25,
+        childAspectRatio: 1.0,
       ),
       itemCount: skills.length,
       itemBuilder: (context, index) {
@@ -247,7 +267,7 @@ class _SkillGrid extends StatelessWidget {
           isSelected: isSelected,
           isUnlocked: isUnlocked,
           prereqMet: prereqMet,
-          onTap: () => onSelect(def.id),
+          onTap: () => onSelect(def),
         );
       },
     );
@@ -273,11 +293,12 @@ class _SkillNodeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final typeLabel = skill.type == SkillType.active ? '主动' : '被动';
     final status = isUnlocked ? '已解锁' : (prereqMet ? '可解锁' : '未满足');
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Card(
-        color: isSelected ? const Color(0xFF16233B) : null,
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      color: isSelected ? const Color(0xFF16233B) : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -294,8 +315,8 @@ class _SkillNodeCard extends StatelessWidget {
                     child: Text(
                       skill.name,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                            fontWeight: FontWeight.w600,
+                          ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -305,19 +326,19 @@ class _SkillNodeCard extends StatelessWidget {
               Text(
                 typeLabel,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: const Color(0xFF8FA3BF),
-                ),
+                      color: const Color(0xFF8FA3BF),
+                    ),
               ),
               const SizedBox(height: 4),
               Text(
                 status,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isUnlocked
-                      ? const Color(0xFF8BE4B4)
-                      : (prereqMet
-                            ? const Color(0xFFF5C542)
-                            : const Color(0xFF8FA3BF)),
-                ),
+                      color: isUnlocked
+                          ? const Color(0xFF8BE4B4)
+                          : (prereqMet
+                              ? const Color(0xFFF5C542)
+                              : const Color(0xFF8FA3BF)),
+                    ),
               ),
             ],
           ),
@@ -392,42 +413,44 @@ class _SkillDetailPanel extends StatelessWidget {
                   child: Text(
                     def.name,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                 ),
                 Text(
                   def.type == SkillType.active ? '主动' : '被动',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+                        color: const Color(0xFF8FA3BF),
+                      ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Text(
               def.description,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
             if (isActive) ...[
               const SizedBox(height: 10),
               Text(
                 '持续 ${_formatDuration(durationMs)}，冷却 ${_formatDuration(cooldownMs)}',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: const Color(0xFF8FA3BF)),
               ),
             ],
             const SizedBox(height: 12),
             Text(
               '前置：$prereqText',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: prereqMet
-                    ? const Color(0xFF8FA3BF)
-                    : const Color(0xFFF5C542),
-              ),
+                    color: prereqMet
+                        ? const Color(0xFF8FA3BF)
+                        : const Color(0xFFF5C542),
+                  ),
             ),
             const SizedBox(height: 12),
             if (!isUnlocked) ...[
@@ -435,15 +458,15 @@ class _SkillDetailPanel extends StatelessWidget {
                 Text(
                   '消耗：${_formatNumber(blueprintCost)} 蓝图',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+                        color: const Color(0xFF8FA3BF),
+                      ),
                 ),
               if (canUsePoints)
                 Text(
                   '消耗：${def.costSkillPoints} 技能点',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+                        color: const Color(0xFF8FA3BF),
+                      ),
                 ),
               const SizedBox(height: 8),
               Row(
@@ -480,8 +503,8 @@ class _SkillDetailPanel extends StatelessWidget {
                     Text(
                       '技能槽已满',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFFF5C542),
-                      ),
+                            color: const Color(0xFFF5C542),
+                          ),
                     ),
                 ],
               ),
@@ -565,17 +588,17 @@ class _SkillUpgradeRow extends StatelessWidget {
           child: Text(
             '强化等级 Lv.$level / $maxLevel，消耗 ${_formatNumber(cost)} 常数',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: level >= maxLevel
-                  ? const Color(0xFF8FA3BF)
-                  : const Color(0xFFF5C542),
-            ),
+                  color: level >= maxLevel
+                      ? const Color(0xFF8FA3BF)
+                      : const Color(0xFFF5C542),
+                ),
           ),
         ),
         OutlinedButton(
           onPressed: canUpgrade
               ? (isTimeWarp
-                    ? controller.buyTimeWarpUpgrade
-                    : controller.buyOverclockUpgrade)
+                  ? controller.buyTimeWarpUpgrade
+                  : controller.buyOverclockUpgrade)
               : null,
           child: Text(level >= maxLevel ? '已满级' : '强化'),
         ),

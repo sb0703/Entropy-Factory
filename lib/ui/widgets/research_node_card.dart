@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../game/game_ui_state.dart';
 
@@ -16,17 +16,18 @@ class ResearchNodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 通过状态颜色与标签标识研究可用性。
+    // 通过状态颜色与标识文本提示研究可用性。
     final tone = _toneFor(node.status, node.canBuy, context);
     final statusLabel = _statusLabel(node);
-    final borderColor = isSelected
-        ? Theme.of(context).colorScheme.primary
-        : const Color(0x1A5CE1E6);
+    final borderSide = isSelected
+        ? BorderSide(color: Theme.of(context).colorScheme.primary)
+        : BorderSide.none;
 
     return Card(
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: borderColor),
+        side: borderSide,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),

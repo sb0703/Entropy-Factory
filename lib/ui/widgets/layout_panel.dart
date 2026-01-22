@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../game/game_controller.dart';
 import '../../game/game_definitions.dart';
 import '../../game/game_state.dart';
+import '../../game/research_definitions.dart';
 
 class LayoutPanel extends ConsumerStatefulWidget {
   const LayoutPanel({super.key});
@@ -21,6 +22,43 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
     final controller = ref.read(gameControllerProvider.notifier);
     final placedCounts = _placedCounts(state.layoutGrid);
 
+    if (!state.isLayoutUnlocked) {
+      final layoutResearch = researchById[layoutUnlockResearchId];
+      final costText = layoutResearch == null
+          ? '请在研究中解锁设施布局功能。'
+          : '在研究中解锁：${researchTitle(layoutResearch.id)}（消耗 ${layoutResearch.costBlueprints.toStringAsFixed(0)} 蓝图）';
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '设施布局（未解锁）',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '解锁后可放置设施并获得邻接协同加成。',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                costText,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFFF5C542),
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -35,7 +73,14 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
             ),
             const SizedBox(height: 6),
             Text(
-              '相邻设施将触发协同加成',
+              '相邻设施将触发协同加成。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF8FA3BF),
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '布局格位：${state.layoutGrid.length}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF8FA3BF),
                   ),

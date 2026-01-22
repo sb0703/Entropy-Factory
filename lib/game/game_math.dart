@@ -152,7 +152,7 @@ double partSynthesisEnergyNeedPerSec(GameState state, ResearchEffects effects) {
 double _sumOutput(GameState state, BuildingType type) {
   var total = 0.0;
   final layout = state.layoutGrid;
-  final hasLayout = layout.isNotEmpty;
+  final hasLayout = state.isLayoutUnlocked && layout.isNotEmpty;
 
   for (final def in buildingDefinitions) {
     if (def.type != type) {

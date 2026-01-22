@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../game/game_controller.dart';
@@ -26,7 +26,6 @@ class _ResearchTabState extends ConsumerState<ResearchTab> {
         .toList(growable: false);
     final selectedNode = _resolveSelection(nodes);
 
-    // 左侧节点选择，右侧（或底部）展示详情与购买入口。
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
@@ -52,56 +51,32 @@ class _ResearchTabState extends ConsumerState<ResearchTab> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 1.4,
-                    ),
-                    itemCount: nodes.length,
-                    itemBuilder: (context, index) {
-                      final node = nodes[index];
-                      return ResearchNodeCard(
-                        node: node,
-                        isSelected: node.id == selectedNode?.id,
-                        onTap: () {
-                          setState(() {
-                            _selectedId = node.id;
-                          });
-                        },
-                      );
-                    },
-                  ),
-                ),
-                if (MediaQuery.of(context).size.width >= 900) ...[
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: _ResearchDetailPanel(
-                      node: selectedNode,
-                      onPurchase: selectedNode == null
-                          ? null
-                          : () => controller.buyResearch(selectedNode.id),
-                    ),
-                  ),
-                ],
-              ],
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.4,
+              ),
+              itemCount: nodes.length,
+              itemBuilder: (context, index) {
+                final node = nodes[index];
+                return ResearchNodeCard(
+                  node: node,
+                  isSelected: node.id == selectedNode?.id,
+                  onTap: () {
+                    setState(() {
+                      _selectedId = node.id;
+                    });
+                    _showResearchDetailSheet(
+                      node,
+                      onPurchase: () => controller.buyResearch(node.id),
+                    );
+                  },
+                );
+              },
             ),
           ),
-          if (MediaQuery.of(context).size.width < 900) ...[
-            const SizedBox(height: 12),
-            _ResearchDetailPanel(
-              node: selectedNode,
-              onPurchase: selectedNode == null
-                  ? null
-                  : () => controller.buyResearch(selectedNode.id),
-            ),
-          ],
         ],
       ),
     );
@@ -117,6 +92,38 @@ class _ResearchTabState extends ConsumerState<ResearchTab> {
       }
     }
     return nodes.first;
+  }
+
+  Future<void> _showResearchDetailSheet(
+    ResearchNodeDisplay node, {
+    required VoidCallback onPurchase,
+  }) async {
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF0B1321),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _ResearchDetailPanel(
+                node: node,
+                onPurchase: node.canBuy ? onPurchase : null,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -151,71 +158,65 @@ class _ResearchDetailPanel extends StatelessWidget {
     required this.onPurchase,
   });
 
-  final ResearchNodeDisplay? node;
+  final ResearchNodeDisplay node;
   final VoidCallback? onPurchase;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: node == null
-            ? Center(
-                child: Text(
-                  '请选择研究节点',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
-                ),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    node!.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '效果',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: const Color(0xFF8FA3BF),
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    node!.description,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '成本',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: const Color(0xFF8FA3BF),
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    node!.cost,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '前置：${node!.prerequisiteText}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF8FA3BF),
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: node!.canBuy ? onPurchase : null,
-                    child: const Text('购买'),
-                  ),
-                ],
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                node.title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                '效果',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                node.description,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '成本',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                node.cost,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '前置：${node.prerequisiteText}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: onPurchase,
+                child: const Text('购买'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

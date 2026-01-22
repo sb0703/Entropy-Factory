@@ -6,9 +6,10 @@ enum ResourceType { shard, part, blueprint, law, constant }
 
 enum EnergyPriorityMode { synthesisFirst, conversionFirst }
 
-const int layoutColumns = 4;
+const int layoutColumns = 5;
 const int layoutRows = 4;
 const int layoutSize = layoutColumns * layoutRows;
+const String layoutUnlockResearchId = 'industry_layout';
 
 /// 娓告垙鏍稿績鐘舵€佺被
 ///
@@ -127,6 +128,10 @@ class GameState {
 
   /// 鑾峰彇鎸囧畾绫诲瀷璧勬簮鐨勬暟閲忥紝榛樿涓?0
   BigNumber resource(ResourceType type) => resources[type] ?? BigNumber.zero;
+
+  bool get isLayoutUnlocked {
+    return researchPurchased.contains(layoutUnlockResearchId);
+  }
 
   double resourceAsDouble(ResourceType type, {double max = 1e308}) {
     return resource(type).toDouble(max: max);

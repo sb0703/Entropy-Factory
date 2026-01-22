@@ -190,10 +190,17 @@ class _ResourcePillState extends State<ResourcePill>
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    widget.value,
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                  SizedBox(
+                    width: 96,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        widget.value,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
                 ],
               ),

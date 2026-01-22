@@ -141,6 +141,18 @@ const List<ResearchDefinition> researchDefinitions = [
     prerequisites: ['industry_1'],
   ),
   ResearchDefinition(
+    id: 'industry_3',
+    branch: ResearchBranch.industry,
+    costBlueprints: 30,
+    prerequisites: ['industry_2'],
+  ),
+  ResearchDefinition(
+    id: 'industry_layout',
+    branch: ResearchBranch.industry,
+    costBlueprints: 20,
+    prerequisites: ['industry_2'],
+  ),
+  ResearchDefinition(
     id: 'algorithm_1',
     branch: ResearchBranch.algorithm,
     costBlueprints: 8,
@@ -152,6 +164,18 @@ const List<ResearchDefinition> researchDefinitions = [
     prerequisites: ['algorithm_1'],
   ),
   ResearchDefinition(
+    id: 'algorithm_3',
+    branch: ResearchBranch.algorithm,
+    costBlueprints: 40,
+    prerequisites: ['algorithm_2'],
+  ),
+  ResearchDefinition(
+    id: 'algorithm_4',
+    branch: ResearchBranch.algorithm,
+    costBlueprints: 60,
+    prerequisites: ['algorithm_3'],
+  ),
+  ResearchDefinition(
     id: 'cosmos_1',
     branch: ResearchBranch.cosmos,
     costBlueprints: 15,
@@ -161,6 +185,18 @@ const List<ResearchDefinition> researchDefinitions = [
     branch: ResearchBranch.cosmos,
     costBlueprints: 30,
     prerequisites: ['cosmos_1'],
+  ),
+  ResearchDefinition(
+    id: 'cosmos_3',
+    branch: ResearchBranch.cosmos,
+    costBlueprints: 50,
+    prerequisites: ['cosmos_2'],
+  ),
+  ResearchDefinition(
+    id: 'cosmos_4',
+    branch: ResearchBranch.cosmos,
+    costBlueprints: 80,
+    prerequisites: ['cosmos_3'],
   ),
 ];
 
@@ -184,34 +220,62 @@ ResearchEffects computeResearchEffects(GameState state) {
           shardProductionMultiplier: effects.shardProductionMultiplier * 2.0,
         );
         break;
-      case 'industry_2':
-        effects = effects.copyWith(
-          shardCostGrowthOffset: effects.shardCostGrowthOffset - 0.02,
-        );
-        break;
+    case 'industry_2':
+      effects = effects.copyWith(
+        shardCostGrowthOffset: effects.shardCostGrowthOffset - 0.02,
+      );
+      break;
+    case 'industry_3':
+      effects = effects.copyWith(
+        shardProductionMultiplier: effects.shardProductionMultiplier * 1.5,
+      );
+      break;
       case 'algorithm_1':
         effects = effects.copyWith(
           shardToPartEfficiencyMultiplier:
               effects.shardToPartEfficiencyMultiplier * 1.2,
         );
         break;
-      case 'algorithm_2':
-        effects = effects.copyWith(
-          shardConversionCapacityMultiplier:
-              effects.shardConversionCapacityMultiplier * 1.2,
-        );
-        break;
+    case 'algorithm_2':
+      effects = effects.copyWith(
+        shardConversionCapacityMultiplier:
+            effects.shardConversionCapacityMultiplier * 1.2,
+      );
+      break;
+    case 'algorithm_3':
+      effects = effects.copyWith(
+        shardToPartEfficiencyMultiplier:
+            effects.shardToPartEfficiencyMultiplier * 1.25,
+      );
+      break;
+    case 'algorithm_4':
+      effects = effects.copyWith(
+        shardConversionCapacityMultiplier:
+            effects.shardConversionCapacityMultiplier * 1.3,
+      );
+      break;
       case 'cosmos_1':
         effects = effects.copyWith(
           energyNeedMultiplier: effects.energyNeedMultiplier * 0.9,
         );
         break;
-      case 'cosmos_2':
-        effects = effects.copyWith(
-          blueprintProductionMultiplier:
-              effects.blueprintProductionMultiplier * 1.25,
-        );
-        break;
+    case 'cosmos_2':
+      effects = effects.copyWith(
+        blueprintProductionMultiplier:
+            effects.blueprintProductionMultiplier * 1.25,
+      );
+      break;
+    case 'cosmos_3':
+      effects = effects.copyWith(
+        blueprintProductionMultiplier:
+            effects.blueprintProductionMultiplier * 1.35,
+      );
+      break;
+    case 'cosmos_4':
+      effects = effects.copyWith(
+        energyNeedMultiplier: effects.energyNeedMultiplier * 0.85,
+      );
+      break;
     }
   }
   return effects;
@@ -224,14 +288,26 @@ String researchTitle(String id) {
       return '工业-1';
     case 'industry_2':
       return '工业-2';
+    case 'industry_3':
+      return '工业-3';
+    case 'industry_layout':
+      return '设施布局';
     case 'algorithm_1':
       return '算法-1';
     case 'algorithm_2':
       return '算法-2';
+    case 'algorithm_3':
+      return '算法-3';
+    case 'algorithm_4':
+      return '算法-4';
     case 'cosmos_1':
       return '宇宙-1';
     case 'cosmos_2':
       return '宇宙-2';
+    case 'cosmos_3':
+      return '宇宙-3';
+    case 'cosmos_4':
+      return '宇宙-4';
     default:
       return id;
   }
@@ -244,14 +320,26 @@ String researchDescription(String id) {
       return '采集设施产出 x2';
     case 'industry_2':
       return '采集系成本增长 -0.02';
+    case 'industry_3':
+      return '采集设施产出 +50%';
+    case 'industry_layout':
+      return '解锁设施布局与邻接加成';
     case 'algorithm_1':
       return '碎片转换效率 +20%';
     case 'algorithm_2':
       return '转换设施产能 +20%';
+    case 'algorithm_3':
+      return '碎片转换效率 +25%';
+    case 'algorithm_4':
+      return '转换设施产能 +30%';
     case 'cosmos_1':
       return '合成能耗 -10%';
     case 'cosmos_2':
       return '蓝图产出 +25%，解锁离线合成';
+    case 'cosmos_3':
+      return '蓝图产出 +35%';
+    case 'cosmos_4':
+      return '合成能耗 -15%';
     default:
       return '效果未知';
   }

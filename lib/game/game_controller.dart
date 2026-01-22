@@ -302,6 +302,9 @@ class GameController extends StateNotifier<GameState> {
   }
 
   void placeBuildingInLayout(String buildingId, int index) {
+    if (!_simState.isLayoutUnlocked) {
+      return;
+    }
     if (index < 0 || index >= _simState.layoutGrid.length) {
       return;
     }
@@ -329,6 +332,9 @@ class GameController extends StateNotifier<GameState> {
   }
 
   void clearLayoutSlot(int index) {
+    if (!_simState.isLayoutUnlocked) {
+      return;
+    }
     if (index < 0 || index >= _simState.layoutGrid.length) {
       return;
     }
