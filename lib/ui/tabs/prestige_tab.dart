@@ -34,9 +34,9 @@ class PrestigeTab extends ConsumerWidget {
       children: [
         Text(
           '升维将重置进度，换取常数与永久强化',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF8FA3BF),
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
         ),
         const SizedBox(height: 12),
         Card(
@@ -48,51 +48,51 @@ class PrestigeTab extends ConsumerWidget {
                 Text(
                   '升维预估',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '当前定律',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _formatNumber(laws),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '预计获得常数',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _formatNumber(preview),
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.secondary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    color: Theme.of(context).colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '常数 = 向下取整(√定律 × ${constantFactor.toStringAsFixed(0)})',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '每 ${lawThreshold.toStringAsFixed(0)} 蓝图自动转化为 1 定律',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
               ],
             ),
@@ -108,22 +108,22 @@ class PrestigeTab extends ConsumerWidget {
                 Text(
                   '永久解锁',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '永久模块槽：$moduleSlots',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '永久产出加成：+${(permanentBonus * 100).toStringAsFixed(0)}%',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFFF5C542),
-                      ),
+                    color: const Color(0xFFF5C542),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 for (final unlock in permanentUnlockDefinitions)
@@ -145,8 +145,8 @@ class PrestigeTab extends ConsumerWidget {
                 Text(
                   '升维将重置',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const _Bullet(text: '碎片、零件、蓝图、定律'),
@@ -167,8 +167,8 @@ class PrestigeTab extends ConsumerWidget {
                 Text(
                   '挑战升维',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 if (activeChallengeId != null)
@@ -182,15 +182,15 @@ class PrestigeTab extends ConsumerWidget {
                   Text(
                     '完成挑战可获得永久解锁奖励。',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF8FA3BF),
-                        ),
+                      color: const Color(0xFF8FA3BF),
+                    ),
                   ),
                 if (activeChallengeId == null)
                   Text(
                     '挑战开启后不可取消，请谨慎选择。',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFFF5C542),
-                        ),
+                      color: const Color(0xFFF5C542),
+                    ),
                   ),
                 const SizedBox(height: 12),
                 for (final challenge in prestigeChallenges)
@@ -218,8 +218,8 @@ class PrestigeTab extends ConsumerWidget {
                 Text(
                   '保留内容',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const _Bullet(text: '常数'),
@@ -239,15 +239,15 @@ class PrestigeTab extends ConsumerWidget {
                 Text(
                   '常数强化',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '可用常数：${_formatNumber(constants)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 for (final def in constantUpgradeDefinitions)
@@ -268,9 +268,9 @@ class PrestigeTab extends ConsumerWidget {
             child: GestureDetector(
               onLongPress: () {
                 if (!canPrestige) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('定律不足，无法升维')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('定律不足，无法升维')));
                   return;
                 }
                 _showPrestigeDialog(
@@ -283,15 +283,17 @@ class PrestigeTab extends ConsumerWidget {
                       return;
                     }
                     controller.prestige();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('升维完成')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('升维完成')));
                   },
                 );
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
                   gradient: const LinearGradient(
@@ -343,10 +345,7 @@ class _Bullet extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),
@@ -390,25 +389,25 @@ class _ConstantUpgradeTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   def.name,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Text(
                 'Lv.$level/${def.maxLevel}',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: const Color(0xFF8FA3BF),
-                    ),
+                  color: const Color(0xFF8FA3BF),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             def.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFFB4C0D3),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFFB4C0D3)),
           ),
           const SizedBox(height: 10),
           Row(
@@ -417,10 +416,10 @@ class _ConstantUpgradeTile extends StatelessWidget {
                 child: Text(
                   costText,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: isMax
-                            ? const Color(0xFF8FA3BF)
-                            : const Color(0xFFF5C542),
-                      ),
+                    color: isMax
+                        ? const Color(0xFF8FA3BF)
+                        : const Color(0xFFF5C542),
+                  ),
                 ),
               ),
               FilledButton(
@@ -456,16 +455,16 @@ Future<void> _showPrestigeDialog(
             const SizedBox(height: 12),
             Text(
               '将重置：碎片、零件、蓝图、定律、设施、配比、研究',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
             const SizedBox(height: 6),
             Text(
               '将保留：常数、里程碑、常数强化',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
           ],
         ),
@@ -578,10 +577,7 @@ class _PrestigeTransitionState extends State<_PrestigeTransition> {
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      Color(0xFF5CE1E6),
-                      Color(0x00243B5A),
-                    ],
+                    colors: [Color(0xFF5CE1E6), Color(0x00243B5A)],
                   ),
                 ),
               ),
@@ -615,17 +611,17 @@ class _PrestigeTransitionState extends State<_PrestigeTransition> {
                   Text(
                     '升维中…',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: Colors.white,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     '空间扭曲 · 逻辑重组',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFFB4C0D3),
-                        ),
+                      color: const Color(0xFFB4C0D3),
+                    ),
                   ),
                 ],
               ),
@@ -692,14 +688,11 @@ Future<void> _confirmStartChallenge(
 }
 
 String _formatNumber(Object value) {
-    return formatNumber(value);
+  return formatNumber(value);
 }
 
 class _UnlockTile extends StatelessWidget {
-  const _UnlockTile({
-    required this.unlock,
-    required this.unlocked,
-  });
+  const _UnlockTile({required this.unlock, required this.unlocked});
 
   final PermanentUnlock unlock;
   final bool unlocked;
@@ -722,18 +715,18 @@ class _UnlockTile extends StatelessWidget {
           Text(
             unlock.title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: unlocked
-                      ? const Color(0xFF5CE1E6)
-                      : const Color(0xFFE6EDF7),
-                ),
+              fontWeight: FontWeight.w600,
+              color: unlocked
+                  ? const Color(0xFF5CE1E6)
+                  : const Color(0xFFE6EDF7),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             unlock.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF8FA3BF),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
           ),
         ],
       ),
@@ -756,9 +749,7 @@ class _ChallengeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusText = isCompleted
-        ? '已完成'
-        : (isActive ? '进行中' : '未开始');
+    final statusText = isCompleted ? '已完成' : (isActive ? '进行中' : '未开始');
     final canStart = !isCompleted && !isActive;
 
     return Container(
@@ -777,36 +768,36 @@ class _ChallengeTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   challenge.title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Text(
                 statusText,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: isCompleted
-                          ? const Color(0xFF8BE4B4)
-                          : (isActive
-                              ? const Color(0xFFF5C542)
-                              : const Color(0xFF8FA3BF)),
-                    ),
+                  color: isCompleted
+                      ? const Color(0xFF8BE4B4)
+                      : (isActive
+                            ? const Color(0xFFF5C542)
+                            : const Color(0xFF8FA3BF)),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             challenge.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF8FA3BF),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
           ),
           const SizedBox(height: 6),
           Text(
             '奖励：${permanentUnlockById[challenge.rewardUnlockId]?.title ?? '永久模块槽'}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF8BE4B4),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8BE4B4)),
           ),
           const SizedBox(height: 10),
           Align(
@@ -823,9 +814,7 @@ class _ChallengeTile extends StatelessWidget {
 }
 
 class _ActiveChallengeBanner extends StatelessWidget {
-  const _ActiveChallengeBanner({
-    required this.challenge,
-  });
+  const _ActiveChallengeBanner({required this.challenge});
 
   final PrestigeChallenge challenge;
 
@@ -845,23 +834,23 @@ class _ActiveChallengeBanner extends StatelessWidget {
           Text(
             '当前挑战：${challenge.title}',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFFF5C542),
-                ),
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF5C542),
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             challenge.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFFB4C0D3),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFFB4C0D3)),
           ),
           const SizedBox(height: 10),
           Text(
             '挑战已开启，无法取消。',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFFF5C542),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFFF5C542)),
           ),
         ],
       ),
