@@ -78,6 +78,13 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                     color: const Color(0xFF8FA3BF),
                   ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              '规则：采集邻接能量 +20%，转换邻接采集 +10%，合成邻接转换 +10%，能量邻接采集 +5%。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF6F8198),
+                  ),
+            ),
             const SizedBox(height: 6),
             Text(
               '布局格位：${state.layoutGrid.length}',

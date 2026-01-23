@@ -15,7 +15,6 @@ import 'prestige_rules.dart';
 import 'research_definitions.dart';
 import 'run_modifiers.dart';
 import 'skill_definitions.dart';
-import 'synergy_rules.dart';
 import '../services/save_service.dart';
 
 class GameController extends StateNotifier<GameState> {
@@ -201,14 +200,17 @@ class GameController extends StateNotifier<GameState> {
         );
         final before = Map<ResourceType, BigNumber>.from(_simState.resources);
         _simulateOffline(offlineSeconds);
-        _recordOfflineGain(before);
+        _recordOfflineGain(before, offlineSeconds);
       }
     }
 
     _saveTimer ??= Timer.periodic(const Duration(seconds: 5), (_) => _save());
   }
 
-  void _recordOfflineGain(Map<ResourceType, BigNumber> before) {
+  void _recordOfflineGain(
+    Map<ResourceType, BigNumber> before,
+    double offlineSeconds,
+  ) {
     final gainedShard =
         _simState.resource(ResourceType.shard) -
         (before[ResourceType.shard] ?? BigNumber.zero);
@@ -234,7 +236,8 @@ class GameController extends StateNotifier<GameState> {
       return;
     }
 
-    final detail = parts.join('，');
+    final duration = _formatOfflineDuration(offlineSeconds);
+    final detail = '离线时长 $duration，按产能公式结算：${parts.join('，')}';
     _commitState(_simState.addLogEntry('离线收益', detail));
   }
 
@@ -668,9 +671,13 @@ class GameController extends StateNotifier<GameState> {
   }
 
   void _simulateOffline(double seconds) {
+    // 离线收益按公式一次性结算，避免逐秒循环造成卡顿。
     final effects = _currentEffects(_simState);
     final constants = _currentConstants(_simState);
-    final effectiveSeconds = seconds * constants.speedMultiplier;
+    final effectiveSeconds = math.max(0.0, seconds) * constants.speedMultiplier;
+    if (effectiveSeconds <= 0) {
+      return;
+    }
     final baseShardProd =
         shardProductionPerSec(_simState, effects) *
         constants.productionMultiplier;
@@ -1000,5 +1007,18 @@ String _formatNumber(Object value) {
 }
 
 bool _alwaysFalse(GameState state) => false;
+
+String _formatOfflineDuration(double seconds) {
+  final totalSeconds = seconds.round();
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  if (hours > 0) {
+    return '$hours 小时 $minutes 分钟';
+  }
+  if (minutes > 0) {
+    return '$minutes 分钟';
+  }
+  return '${math.max(1, totalSeconds)} 秒';
+}
 
 

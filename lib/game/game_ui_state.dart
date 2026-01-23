@@ -11,7 +11,6 @@ import 'milestone_definitions.dart';
 import 'number_format.dart';
 import 'research_definitions.dart';
 import 'run_modifiers.dart';
-import 'synergy_rules.dart';
 
 @immutable
 class ResourceDisplay {

@@ -6,7 +6,8 @@ import 'research_definitions.dart';
 /// 设施协同加成：根据设施数量触发类型协同。
 ResearchEffects computeSynergyEffects(GameState state) {
   final energyCount = state.buildingCount('fusion');
-  final shardCount = state.buildingCount('miner') +
+  final shardCount =
+      state.buildingCount('miner') +
       state.buildingCount('drill') +
       state.buildingCount('core_rig') +
       state.buildingCount('orbital_array');

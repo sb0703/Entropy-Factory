@@ -178,7 +178,7 @@ class GameState {
       timeMs: (time ?? DateTime.now()).millisecondsSinceEpoch,
     );
     final next = [...logEntries, entry];
-    // 濡傛灉鏃ュ織鏁伴噺瓒呰繃闄愬埗锛岀Щ闄ゆ渶鏃╃殑璁板綍
+    // 如果日志数量超过限制，移除最早的记录。
     final trimmed = next.length > maxEntries
         ? next.sublist(next.length - maxEntries)
         : next;
@@ -221,7 +221,7 @@ class GameState {
   factory GameState.fromJson(Map<String, dynamic> json) {
     final defaults = GameState.initial();
     
-    // 瑙ｆ瀽璧勬簮
+    // 解析资源
     final resources = Map<ResourceType, BigNumber>.from(defaults.resources);
     final resourceMap = json['resources'];
     if (resourceMap is Map) {
@@ -241,7 +241,7 @@ class GameState {
       }
     }
 
-    // 瑙ｆ瀽寤虹瓚
+    // 解析建筑
     final buildings = <String, int>{};
     final buildingsMap = json['buildings'];
     if (buildingsMap is Map) {
@@ -250,7 +250,7 @@ class GameState {
       }
     }
 
-    // 瑙ｆ瀽宸茶喘涔扮殑鐮旂┒
+    // 解析已购买的研究
     final researchPurchased = <String>{};
     final researchList = json['researchPurchased'];
     if (researchList is List) {
@@ -259,7 +259,7 @@ class GameState {
       }
     }
 
-    // 瑙ｆ瀽宸茶揪鎴愮殑閲岀▼纰?
+    // 解析已达成的里程碑
     final milestonesAchieved = <String>{};
     final milestoneList = json['milestonesAchieved'];
     if (milestoneList is List) {
@@ -308,7 +308,7 @@ class GameState {
       }
     }
 
-    // 瑙ｆ瀽甯告暟鍗囩骇
+    // 解析常数升级
     final constantUpgrades = <String, int>{};
     final upgradeMap = json['constantUpgrades'];
     if (upgradeMap is Map) {
@@ -317,7 +317,7 @@ class GameState {
       }
     }
 
-    // 瑙ｆ瀽鏃ュ織
+    // 解析日志
     final logEntries = <GameLogEntry>[];
     final logList = json['logEntries'];
     if (logList is List) {

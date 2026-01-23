@@ -1,17 +1,17 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../game/game_controller.dart';
-import '../game/game_state.dart';
-import 'effects/particle_layer.dart';
-import 'tabs/log_tab.dart';
-import 'tabs/prestige_tab.dart';
-import 'tabs/production_tab.dart';
-import 'tabs/research_tab.dart';
-import 'tabs/skill_tab.dart';
-import 'widgets/resource_bar.dart';
-import 'widgets/skill_quick_bar.dart';
-import 'widgets/space_background.dart';
+import 'package:flutter_game_test/game/game_controller.dart';
+import 'package:flutter_game_test/game/game_state.dart';
+import 'package:flutter_game_test/ui/effects/particle_layer.dart';
+import 'package:flutter_game_test/ui/tabs/log_tab.dart';
+import 'package:flutter_game_test/ui/tabs/prestige_tab.dart';
+import 'package:flutter_game_test/ui/tabs/production_tab.dart';
+import 'package:flutter_game_test/ui/tabs/research_tab.dart';
+import 'package:flutter_game_test/ui/tabs/skill_tab.dart';
+import 'package:flutter_game_test/ui/widgets/resource_bar.dart';
+import 'package:flutter_game_test/ui/widgets/skill_quick_bar.dart';
+import 'package:flutter_game_test/ui/widgets/space_background.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -139,9 +139,7 @@ class _HomeShellState extends State<HomeShell> {
       builder: (context) {
         return AlertDialog(
           title: const Text('离线收益'),
-          content: SingleChildScrollView(
-            child: Text('本次离线期间获得：\n$formatted'),
-          ),
+          content: SingleChildScrollView(child: Text('本次离线期间获得：\n$formatted')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -153,4 +151,3 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 }
-
