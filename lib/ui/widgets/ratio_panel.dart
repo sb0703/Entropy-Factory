@@ -8,11 +8,18 @@ import '../../game/game_state.dart';
 import '../../game/milestone_definitions.dart';
 import '../../game/research_definitions.dart';
 
-class RatioPanel extends ConsumerWidget {
+class RatioPanel extends ConsumerStatefulWidget {
   const RatioPanel({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RatioPanel> createState() => _RatioPanelState();
+}
+
+class _RatioPanelState extends ConsumerState<RatioPanel> {
+  double? _energyDraft;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(gameControllerProvider);
     final controller = ref.read(gameControllerProvider.notifier);
     final effects =
@@ -28,6 +35,7 @@ class RatioPanel extends ConsumerWidget {
       energyNeed: energyNeed,
     );
     final energyAvailable = rates.energyPerSec * energySplit;
+    final energyRatio = _energyDraft ?? state.energyToSynthesisRatio;
 
     // 管理碎片/能量分配的控制面板。
     return Card(
@@ -62,13 +70,23 @@ class RatioPanel extends ConsumerWidget {
             _SliderRow(
               label: '能量分配',
               valueLabel:
-                  '${(state.energyToSynthesisRatio * 100).round()}% 用于合成',
-              value: state.energyToSynthesisRatio,
-              onChanged: controller.setEnergySplit,
+                  '${(energyRatio * 100).round()}% 用于合成',
+              value: energyRatio,
+              onChanged: (value) {
+                setState(() {
+                  _energyDraft = value;
+                });
+              },
+              onChangeEnd: (value) {
+                controller.setEnergySplit(value);
+                setState(() {
+                  _energyDraft = null;
+                });
+              },
             ),
             const SizedBox(height: 8),
             Text(
-              '剩余 ${((1 - state.energyToSynthesisRatio) * 100).round()}% 用于转换',
+              '剩余 ${((1 - energyRatio) * 100).round()}% 用于转换',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF8FA3BF),
                   ),
@@ -98,12 +116,14 @@ class _SliderRow extends StatelessWidget {
     required this.valueLabel,
     required this.value,
     required this.onChanged,
+    this.onChangeEnd,
   });
 
   final String label;
   final String valueLabel;
   final double value;
   final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChangeEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +153,7 @@ class _SliderRow extends StatelessWidget {
           max: 0.9,
           divisions: 8,
           onChanged: onChanged,
+          onChangeEnd: onChangeEnd,
         ),
       ],
     );

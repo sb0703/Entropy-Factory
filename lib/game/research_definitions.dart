@@ -4,19 +4,17 @@ import 'game_state.dart';
 
 /// 研究分支枚举
 enum ResearchBranch {
-  /// 工业：侧重于资源生产
+  /// 工业：偏重资源生产
   industry,
 
-  /// 算法：侧重于转换效率
+  /// 算法：偏重转换效率
   algorithm,
 
-  /// 宇宙：侧重于高级功能和合成
+  /// 宇宙：偏重高级功能与合成
   cosmos,
 }
 
-/// 研究项目定义类
-///
-/// 定义了科技树中的每一个研究项目。
+/// 研究项目定义
 @immutable
 class ResearchDefinition {
   const ResearchDefinition({
@@ -39,9 +37,7 @@ class ResearchDefinition {
   final List<String> prerequisites;
 }
 
-/// 研究效果类
-///
-/// 汇总了所有已解锁研究带来的加成效果。
+/// 研究效果
 @immutable
 class ResearchEffects {
   const ResearchEffects({
@@ -66,19 +62,19 @@ class ResearchEffects {
   /// 碎片产量倍率
   final double shardProductionMultiplier;
 
-  /// 碎片生产建筑造价增长偏移量（负值表示降低增长速度）
+  /// 碎片设施造价增长偏移（负数表示降低增长速度）
   final double shardCostGrowthOffset;
 
   /// 碎片转零件效率倍率
   final double shardToPartEfficiencyMultiplier;
 
-  /// 碎片转零件能力倍率
+  /// 碎片转换产能倍率
   final double shardConversionCapacityMultiplier;
 
   /// 蓝图产量倍率
   final double blueprintProductionMultiplier;
 
-  /// 能量需求倍率（值越小越节能）
+  /// 能量需求倍率（越小越节能）
   final double energyNeedMultiplier;
 
   /// 合并两个效果对象（乘法叠加）
@@ -153,6 +149,18 @@ const List<ResearchDefinition> researchDefinitions = [
     prerequisites: ['industry_2'],
   ),
   ResearchDefinition(
+    id: 'industry_layout_2',
+    branch: ResearchBranch.industry,
+    costBlueprints: 45,
+    prerequisites: ['industry_layout'],
+  ),
+  ResearchDefinition(
+    id: 'industry_layout_3',
+    branch: ResearchBranch.industry,
+    costBlueprints: 75,
+    prerequisites: ['industry_layout_2'],
+  ),
+  ResearchDefinition(
     id: 'algorithm_1',
     branch: ResearchBranch.algorithm,
     costBlueprints: 8,
@@ -210,7 +218,7 @@ bool researchPrerequisitesMet(GameState state, ResearchDefinition def) {
   return def.prerequisites.every(state.researchPurchased.contains);
 }
 
-/// 计算当前所有已购买研究的总效果
+/// 计算当前已购买研究的总效果
 ResearchEffects computeResearchEffects(GameState state) {
   var effects = ResearchEffects.base;
   for (final id in state.researchPurchased) {
@@ -220,62 +228,62 @@ ResearchEffects computeResearchEffects(GameState state) {
           shardProductionMultiplier: effects.shardProductionMultiplier * 2.0,
         );
         break;
-    case 'industry_2':
-      effects = effects.copyWith(
-        shardCostGrowthOffset: effects.shardCostGrowthOffset - 0.02,
-      );
-      break;
-    case 'industry_3':
-      effects = effects.copyWith(
-        shardProductionMultiplier: effects.shardProductionMultiplier * 1.5,
-      );
-      break;
+      case 'industry_2':
+        effects = effects.copyWith(
+          shardCostGrowthOffset: effects.shardCostGrowthOffset - 0.02,
+        );
+        break;
+      case 'industry_3':
+        effects = effects.copyWith(
+          shardProductionMultiplier: effects.shardProductionMultiplier * 1.5,
+        );
+        break;
       case 'algorithm_1':
         effects = effects.copyWith(
           shardToPartEfficiencyMultiplier:
               effects.shardToPartEfficiencyMultiplier * 1.2,
         );
         break;
-    case 'algorithm_2':
-      effects = effects.copyWith(
-        shardConversionCapacityMultiplier:
-            effects.shardConversionCapacityMultiplier * 1.2,
-      );
-      break;
-    case 'algorithm_3':
-      effects = effects.copyWith(
-        shardToPartEfficiencyMultiplier:
-            effects.shardToPartEfficiencyMultiplier * 1.25,
-      );
-      break;
-    case 'algorithm_4':
-      effects = effects.copyWith(
-        shardConversionCapacityMultiplier:
-            effects.shardConversionCapacityMultiplier * 1.3,
-      );
-      break;
+      case 'algorithm_2':
+        effects = effects.copyWith(
+          shardConversionCapacityMultiplier:
+              effects.shardConversionCapacityMultiplier * 1.2,
+        );
+        break;
+      case 'algorithm_3':
+        effects = effects.copyWith(
+          shardToPartEfficiencyMultiplier:
+              effects.shardToPartEfficiencyMultiplier * 1.25,
+        );
+        break;
+      case 'algorithm_4':
+        effects = effects.copyWith(
+          shardConversionCapacityMultiplier:
+              effects.shardConversionCapacityMultiplier * 1.3,
+        );
+        break;
       case 'cosmos_1':
         effects = effects.copyWith(
           energyNeedMultiplier: effects.energyNeedMultiplier * 0.9,
         );
         break;
-    case 'cosmos_2':
-      effects = effects.copyWith(
-        blueprintProductionMultiplier:
-            effects.blueprintProductionMultiplier * 1.25,
-      );
-      break;
-    case 'cosmos_3':
-      effects = effects.copyWith(
-        blueprintProductionMultiplier:
-            effects.blueprintProductionMultiplier * 1.35,
-      );
-      break;
-    case 'cosmos_4':
-      effects = effects.copyWith(
-        energyNeedMultiplier: effects.energyNeedMultiplier * 0.85,
-      );
-      break;
+      case 'cosmos_2':
+        effects = effects.copyWith(
+          blueprintProductionMultiplier:
+              effects.blueprintProductionMultiplier * 1.25,
+        );
+        break;
+      case 'cosmos_3':
+        effects = effects.copyWith(
+          blueprintProductionMultiplier:
+              effects.blueprintProductionMultiplier * 1.35,
+        );
+        break;
+      case 'cosmos_4':
+        effects = effects.copyWith(
+          energyNeedMultiplier: effects.energyNeedMultiplier * 0.85,
+        );
+        break;
     }
   }
   return effects;
@@ -291,7 +299,11 @@ String researchTitle(String id) {
     case 'industry_3':
       return '工业-3';
     case 'industry_layout':
-      return '设施布局';
+      return '设施布局-1';
+    case 'industry_layout_2':
+      return '设施布局-2';
+    case 'industry_layout_3':
+      return '设施布局-3';
     case 'algorithm_1':
       return '算法-1';
     case 'algorithm_2':
@@ -319,11 +331,15 @@ String researchDescription(String id) {
     case 'industry_1':
       return '采集设施产出 x2';
     case 'industry_2':
-      return '采集系成本增长 -0.02';
+      return '采集设施成本增长 -0.02';
     case 'industry_3':
       return '采集设施产出 +50%';
     case 'industry_layout':
-      return '解锁设施布局与邻接加成';
+      return '解锁设施布局（3x3）与邻接加成';
+    case 'industry_layout_2':
+      return '布局扩展至 4x4';
+    case 'industry_layout_3':
+      return '布局扩展至 5x4';
     case 'algorithm_1':
       return '碎片转换效率 +20%';
     case 'algorithm_2':

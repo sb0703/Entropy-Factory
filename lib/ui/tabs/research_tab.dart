@@ -117,7 +117,12 @@ class _ResearchTabState extends ConsumerState<ResearchTab> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: _ResearchDetailPanel(
                 node: node,
-                onPurchase: node.canBuy ? onPurchase : null,
+                onPurchase: node.canBuy
+                    ? () {
+                        onPurchase();
+                        Navigator.of(context).pop();
+                      }
+                    : null,
               ),
             ),
           ),

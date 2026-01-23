@@ -1,4 +1,6 @@
-﻿import 'package:flutter/foundation.dart';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 
 import 'big_number.dart';
 
@@ -9,7 +11,11 @@ enum EnergyPriorityMode { synthesisFirst, conversionFirst }
 const int layoutColumns = 5;
 const int layoutRows = 4;
 const int layoutSize = layoutColumns * layoutRows;
+const int layoutBaseColumns = 3;
+const int layoutBaseRows = 3;
 const String layoutUnlockResearchId = 'industry_layout';
+const String layoutExpandResearchId = 'industry_layout_2';
+const String layoutMaxResearchId = 'industry_layout_3';
 
 @immutable
 class GameState {
@@ -98,6 +104,54 @@ class GameState {
 
   bool get isLayoutUnlocked {
     return researchPurchased.contains(layoutUnlockResearchId);
+  }
+
+  int get layoutUnlockedColumns {
+    if (!isLayoutUnlocked) {
+      return 0;
+    }
+    if (researchPurchased.contains(layoutMaxResearchId)) {
+      return layoutColumns;
+    }
+    if (researchPurchased.contains(layoutExpandResearchId)) {
+      return math.min(layoutColumns, 4);
+    }
+    return layoutBaseColumns;
+  }
+
+  int get layoutUnlockedRows {
+    if (!isLayoutUnlocked) {
+      return 0;
+    }
+    if (researchPurchased.contains(layoutExpandResearchId) ||
+        researchPurchased.contains(layoutMaxResearchId)) {
+      return layoutRows;
+    }
+    return layoutBaseRows;
+  }
+
+  int get layoutUnlockedCount => layoutUnlockedColumns * layoutUnlockedRows;
+
+  bool isLayoutSlotUnlocked(int index) {
+    if (!isLayoutUnlocked) {
+      return false;
+    }
+    if (index < 0 || index >= layoutSize) {
+      return false;
+    }
+    final unlockedCols = layoutUnlockedColumns;
+    final unlockedRows = layoutUnlockedRows;
+    if (unlockedCols <= 0 || unlockedRows <= 0) {
+      return false;
+    }
+    final row = index ~/ layoutColumns;
+    final col = index % layoutColumns;
+    final startCol = (layoutColumns - unlockedCols) ~/ 2;
+    final startRow = (layoutRows - unlockedRows) ~/ 2;
+    return row >= startRow &&
+        row < startRow + unlockedRows &&
+        col >= startCol &&
+        col < startCol + unlockedCols;
   }
 
   double resourceAsDouble(ResourceType type, {double max = 1e308}) {
@@ -414,9 +468,12 @@ class GameState {
         'excavator': 0,
         'quantum_drill': 0,
         'compressor': 0,
+        'refinery': 0,
+        'assembler': 0,
         'furnace': 0,
         'nanoforge': 0,
         'fusion': 0,
+        'radiation_core': 0,
       },
       researchPurchased: const <String>{},
       milestonesAchieved: const <String>{},

@@ -252,6 +252,9 @@ class GameController extends StateNotifier<GameState> {
     if (def == null) {
       return;
     }
+    if (buildingId == 'radiation_core' && !_simState.isLayoutUnlocked) {
+      return;
+    }
     if (!_canBuyInChallenge(def)) {
       return;
     }
@@ -311,6 +314,9 @@ class GameController extends StateNotifier<GameState> {
     if (index < 0 || index >= _simState.layoutGrid.length) {
       return;
     }
+    if (!_simState.isLayoutSlotUnlocked(index)) {
+      return;
+    }
     if (!buildingById.containsKey(buildingId)) {
       return;
     }
@@ -339,6 +345,9 @@ class GameController extends StateNotifier<GameState> {
       return;
     }
     if (index < 0 || index >= _simState.layoutGrid.length) {
+      return;
+    }
+    if (!_simState.isLayoutSlotUnlocked(index)) {
       return;
     }
     final layout = List<String?>.from(_simState.layoutGrid);

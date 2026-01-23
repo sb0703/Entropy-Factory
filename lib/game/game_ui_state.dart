@@ -306,11 +306,14 @@ BuildingDisplay _buildBuildingDisplay(
   final costTen = totalCost(def, count, 10, effects);
   final maxBuy = maxAffordable(def, count, currency, effects);
   final resourceName = _resourceName(def.costResource);
+  final layoutLocked = def.id == 'radiation_core' && !state.isLayoutUnlocked;
   final costText = '成本：${_formatNumber(next)} $resourceName';
-  final affordabilityText = maxBuy > 0 ? '可购买：$maxBuy' : '资源不足';
-  final canBuyOne = currency >= next;
-  final canBuyTen = maxBuy >= 10 && currency >= costTen;
-  final canBuyMax = maxBuy > 0;
+  final affordabilityText = layoutLocked
+      ? '需要解锁设施布局'
+      : (maxBuy > 0 ? '可购买：$maxBuy' : '资源不足');
+  final canBuyOne = !layoutLocked && currency >= next;
+  final canBuyTen = !layoutLocked && maxBuy >= 10 && currency >= costTen;
+  final canBuyMax = !layoutLocked && maxBuy > 0;
   final outputResource = _outputResourceFor(def.type);
 
   return BuildingDisplay(

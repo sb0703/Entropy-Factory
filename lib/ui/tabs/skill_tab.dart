@@ -101,6 +101,7 @@ class _SkillTabState extends ConsumerState<SkillTab> {
               skill: skill,
               state: ref.read(gameControllerProvider),
               controller: ref.read(gameControllerProvider.notifier),
+              onActionComplete: () => Navigator.of(context).pop(),
             ),
           ),
         );
@@ -355,11 +356,13 @@ class _SkillDetailPanel extends StatelessWidget {
     required this.skill,
     required this.state,
     required this.controller,
+    this.onActionComplete,
   });
 
   final SkillDefinition? skill;
   final GameState state;
   final GameController controller;
+  final VoidCallback? onActionComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -477,6 +480,7 @@ class _SkillDetailPanel extends StatelessWidget {
                           ? () {
                               HapticFeedback.lightImpact();
                               controller.unlockSkillWithBlueprints(def.id);
+                              onActionComplete?.call();
                             }
                           : null,
                       child: const Text('使用蓝图解锁'),
@@ -489,6 +493,7 @@ class _SkillDetailPanel extends StatelessWidget {
                           ? () {
                               HapticFeedback.lightImpact();
                               controller.unlockSkillWithPoints(def.id);
+                              onActionComplete?.call();
                             }
                           : null,
                       child: const Text('使用技能点解锁'),

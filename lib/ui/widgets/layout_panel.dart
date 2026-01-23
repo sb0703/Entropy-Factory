@@ -21,6 +21,7 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
     final state = ref.watch(gameControllerProvider);
     final controller = ref.read(gameControllerProvider.notifier);
     final placedCounts = _placedCounts(state.layoutGrid);
+    final nextLayoutId = _nextLayoutResearchId(state);
 
     if (!state.isLayoutUnlocked) {
       final layoutResearch = researchById[layoutUnlockResearchId];
@@ -85,13 +86,29 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                     color: const Color(0xFF6F8198),
                   ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              '辐射核心会削弱周围设施 -8%（可叠加，最低保留 50%）。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF6F8198),
+                  ),
+            ),
             const SizedBox(height: 6),
             Text(
-              '布局格位：${state.layoutGrid.length}',
+              '已解锁：${state.layoutUnlockedColumns}x${state.layoutUnlockedRows}（${state.layoutUnlockedCount} 格）',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF8FA3BF),
                   ),
             ),
+            if (nextLayoutId != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '下一阶段：${researchTitle(nextLayoutId)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFFF5C542),
+                    ),
+              ),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -124,13 +141,18 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                 childAspectRatio: 1,
               ),
               itemBuilder: (context, index) {
+                final unlocked = state.isLayoutSlotUnlocked(index);
                 final id = state.layoutGrid[index];
                 final def = id == null ? null : buildingById[id];
                 return _LayoutCell(
-                  label: def?.name ?? '空位',
+                  label: unlocked ? (def?.name ?? '空位') : '锁定',
                   tone: _toneFor(def?.type),
-                  occupied: def != null,
+                  occupied: def != null && unlocked,
+                  locked: !unlocked,
                   onTap: () {
+                    if (!unlocked) {
+                      return;
+                    }
                     if (_selectedId == null) {
                       if (id != null) {
                         controller.clearLayoutSlot(index);
@@ -139,7 +161,8 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                     }
                     controller.placeBuildingInLayout(_selectedId!, index);
                   },
-                  onLongPress: () => controller.clearLayoutSlot(index),
+                  onLongPress:
+                      unlocked ? () => controller.clearLayoutSlot(index) : () {},
                 );
               },
             ),
@@ -181,6 +204,7 @@ class _LayoutCell extends StatelessWidget {
     required this.label,
     required this.tone,
     required this.occupied,
+    required this.locked,
     required this.onTap,
     required this.onLongPress,
   });
@@ -188,6 +212,7 @@ class _LayoutCell extends StatelessWidget {
   final String label;
   final Color tone;
   final bool occupied;
+  final bool locked;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -198,10 +223,12 @@ class _LayoutCell extends StatelessWidget {
       onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF0C1524),
+          color: locked ? const Color(0xFF0B1220) : const Color(0xFF0C1524),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: occupied ? tone.withAlpha(160) : const Color(0x331C2A3A),
+            color: locked
+                ? const Color(0x221C2A3A)
+                : (occupied ? tone.withAlpha(160) : const Color(0x331C2A3A)),
           ),
         ),
         child: Center(
@@ -209,13 +236,25 @@ class _LayoutCell extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: occupied ? tone : const Color(0xFF8FA3BF),
+                  color: locked
+                      ? const Color(0xFF3F4A5C)
+                      : (occupied ? tone : const Color(0xFF8FA3BF)),
                 ),
           ),
         ),
       ),
     );
   }
+}
+
+String? _nextLayoutResearchId(GameState state) {
+  if (!state.researchPurchased.contains(layoutExpandResearchId)) {
+    return layoutExpandResearchId;
+  }
+  if (!state.researchPurchased.contains(layoutMaxResearchId)) {
+    return layoutMaxResearchId;
+  }
+  return null;
 }
 
 Map<String, int> _placedCounts(List<String?> grid) {

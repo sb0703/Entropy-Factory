@@ -169,10 +169,13 @@ double _sumOutput(GameState state, BuildingType type) {
 
     var placed = 0;
     for (var i = 0; i < layout.length; i++) {
+      if (!state.isLayoutSlotUnlocked(i)) {
+        continue;
+      }
       final placedId = layout[i];
       if (placedId == def.id) {
         placed += 1;
-        final bonus = _adjacencyBonus(layout, i, def.type);
+        final bonus = _adjacencyBonus(state, layout, i, def.type);
         total += def.baseOutputPerSec * bonus;
       }
     }
@@ -186,6 +189,7 @@ double _sumOutput(GameState state, BuildingType type) {
 }
 
 double _adjacencyBonus(
+  GameState state,
   List<String?> layout,
   int index,
   BuildingType type,
@@ -193,12 +197,19 @@ double _adjacencyBonus(
   final neighbors = _neighborIndices(index);
   var bonus = 1.0;
   for (final n in neighbors) {
+    if (!state.isLayoutSlotUnlocked(n)) {
+      continue;
+    }
     final neighborId = layout[n];
     if (neighborId == null) {
       continue;
     }
     final neighborDef = buildingById[neighborId];
     if (neighborDef == null) {
+      continue;
+    }
+    if (neighborId == 'radiation_core' && type != BuildingType.energyProducer) {
+      bonus -= 0.08;
       continue;
     }
     switch (type) {
@@ -224,7 +235,7 @@ double _adjacencyBonus(
         break;
     }
   }
-  return bonus;
+  return bonus.clamp(0.5, 2.0);
 }
 
 List<int> _neighborIndices(int index) {
@@ -341,25 +352,5 @@ double _effectiveGrowth(BuildingDefinition def, ResearchEffects effects) {
 }
 
 ResearchEffects computeSynergyEffects(GameState state) {
-  final energyCount = state.buildingCount('fusion');
-  final shardCount = state.buildingCount('miner') +
-      state.buildingCount('drill') +
-      state.buildingCount('core_rig') +
-      state.buildingCount('orbital_array');
-  final converterCount = state.buildingCount('compressor');
-  final blueprintCount = state.buildingCount('furnace');
-
-  final shardBonus = 1 + 0.02 * (energyCount ~/ 5);
-  final conversionBonus = 1 + 0.02 * (shardCount ~/ 10);
-  final efficiencyBonus = 1 + 0.02 * (converterCount ~/ 8);
-  final blueprintBonus = 1 + 0.03 * (blueprintCount ~/ 5);
-  final adjacencyPairs = math.min(energyCount, shardCount);
-  final adjacencyBonus = 1 + 0.01 * (adjacencyPairs ~/ 5);
-
-  return ResearchEffects.base.copyWith(
-    shardProductionMultiplier: shardBonus * adjacencyBonus,
-    shardConversionCapacityMultiplier: conversionBonus,
-    shardToPartEfficiencyMultiplier: efficiencyBonus,
-    blueprintProductionMultiplier: blueprintBonus,
-  );
+  return ResearchEffects.base;
 }
