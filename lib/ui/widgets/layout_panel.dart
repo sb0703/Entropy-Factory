@@ -15,6 +15,7 @@ class LayoutPanel extends ConsumerStatefulWidget {
 
 class _LayoutPanelState extends ConsumerState<LayoutPanel> {
   String? _selectedId;
+  int? _selectedIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +94,20 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                     color: const Color(0xFF6F8198),
                   ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              '效率说明：采集 +20%/能量，能量 +5%/采集，转换 +10%/采集，合成 +10%/转换。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF6F8198),
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '连线提示：青色连线表示获得相邻加成，红色连线表示受到辐射削弱。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF6F8198),
+                  ),
+            ),
             const SizedBox(height: 6),
             Text(
               '已解锁：${state.layoutUnlockedColumns}x${state.layoutUnlockedRows}（${state.layoutUnlockedCount} 格）',
@@ -130,41 +145,97 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
               ],
             ),
             const SizedBox(height: 12),
-            GridView.builder(
-              itemCount: state.layoutGrid.length,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: layoutColumns,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 1,
-              ),
-              itemBuilder: (context, index) {
-                final unlocked = state.isLayoutSlotUnlocked(index);
-                final id = state.layoutGrid[index];
-                final def = id == null ? null : buildingById[id];
-                return _LayoutCell(
-                  label: unlocked ? (def?.name ?? '空位') : '锁定',
-                  tone: _toneFor(def?.type),
-                  occupied: def != null && unlocked,
-                  locked: !unlocked,
-                  onTap: () {
-                    if (!unlocked) {
-                      return;
-                    }
-                    if (_selectedId == null) {
-                      if (id != null) {
-                        controller.clearLayoutSlot(index);
-                      }
-                      return;
-                    }
-                    controller.placeBuildingInLayout(_selectedId!, index);
-                  },
-                  onLongPress:
-                      unlocked ? () => controller.clearLayoutSlot(index) : () {},
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 8.0;
+                final maxWidth = constraints.maxWidth;
+                final cellSize =
+                    (maxWidth - spacing * (layoutColumns - 1)) / layoutColumns;
+                final gridHeight =
+                    cellSize * layoutRows + spacing * (layoutRows - 1);
+
+                return SizedBox(
+                  height: gridHeight,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _LayoutLinkPainter(
+                              layout: state.layoutGrid,
+                              state: state,
+                              cellSize: cellSize,
+                              spacing: spacing,
+                            ),
+                          ),
+                        ),
+                      ),
+                      GridView.builder(
+                        itemCount: state.layoutGrid.length,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: layoutColumns,
+                          mainAxisSpacing: spacing,
+                          crossAxisSpacing: spacing,
+                          childAspectRatio: 1,
+                        ),
+                        itemBuilder: (context, index) {
+                          final unlocked = state.isLayoutSlotUnlocked(index);
+                          final id = state.layoutGrid[index];
+                          final def = id == null ? null : buildingById[id];
+                          final bonus = def == null
+                              ? 1.0
+                              : _adjacencyBonus(
+                                  state.layoutGrid,
+                                  index,
+                                  def.type,
+                                  state,
+                                );
+                final highlightTone = bonus == 1.0
+                    ? null
+                    : (bonus > 1.0
+                        ? const Color(0xFF5CE1E6)
+                        : const Color(0xFFFF6B6B));
+                          return _LayoutCell(
+                            label: unlocked ? (def?.name ?? '空位') : '锁定',
+                            tone: _toneFor(def?.type),
+                            occupied: def != null && unlocked,
+                            locked: !unlocked,
+                            highlight: highlightTone,
+                            onTap: () {
+                              if (!unlocked) {
+                                return;
+                              }
+                              setState(() {
+                                _selectedIndex = index;
+                              });
+                              if (_selectedId == null) {
+                                if (id != null) {
+                                  controller.clearLayoutSlot(index);
+                                }
+                                return;
+                              }
+                              controller.placeBuildingInLayout(
+                                _selectedId!,
+                                index,
+                              );
+                            },
+                            onLongPress: unlocked
+                                ? () => controller.clearLayoutSlot(index)
+                                : () {},
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 );
               },
+            ),
+            const SizedBox(height: 12),
+            _LayoutDetail(
+              state: state,
+              index: _selectedIndex,
             ),
           ],
         ),
@@ -199,12 +270,92 @@ class _BuildChip extends StatelessWidget {
   }
 }
 
+class _LayoutDetail extends StatelessWidget {
+  const _LayoutDetail({
+    required this.state,
+    required this.index,
+  });
+
+  final GameState state;
+  final int? index;
+
+  @override
+  Widget build(BuildContext context) {
+    if (index == null || index! < 0 || index! >= state.layoutGrid.length) {
+      return Text(
+        '提示：点击布局格位可查看邻接效率明细。',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF6F8198),
+            ),
+      );
+    }
+    if (!state.isLayoutSlotUnlocked(index!)) {
+      return Text(
+        '该格位尚未解锁。',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF6F8198),
+            ),
+      );
+    }
+    final id = state.layoutGrid[index!];
+    if (id == null) {
+      return Text(
+        '该格位为空。',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF6F8198),
+            ),
+      );
+    }
+    final def = buildingById[id];
+    if (def == null) {
+      return const SizedBox.shrink();
+    }
+    final detail = _adjacencyDetail(state.layoutGrid, index!, def.type, state);
+    final bonusPercent = ((detail.bonus - 1) * 100).round();
+    final summary = bonusPercent == 0
+        ? '当前无邻接加成'
+        : (bonusPercent > 0 ? '当前加成 +$bonusPercent%' : '当前削弱 $bonusPercent%');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '格位：${def.name}',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          summary,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: bonusPercent >= 0
+                    ? const Color(0xFF8FA3BF)
+                    : const Color(0xFFFF9A9A),
+              ),
+        ),
+        if (detail.entries.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          for (final entry in detail.entries)
+            Text(
+              entry,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF6F8198),
+                  ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
 class _LayoutCell extends StatelessWidget {
   const _LayoutCell({
     required this.label,
     required this.tone,
     required this.occupied,
     required this.locked,
+    required this.highlight,
     required this.onTap,
     required this.onLongPress,
   });
@@ -213,6 +364,7 @@ class _LayoutCell extends StatelessWidget {
   final Color tone;
   final bool occupied;
   final bool locked;
+  final Color? highlight;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -228,7 +380,9 @@ class _LayoutCell extends StatelessWidget {
           border: Border.all(
             color: locked
                 ? const Color(0x221C2A3A)
-                : (occupied ? tone.withAlpha(160) : const Color(0x331C2A3A)),
+                : (highlight ?? (occupied
+                        ? tone.withAlpha(160)
+                        : const Color(0x331C2A3A))),
           ),
         ),
         child: Center(
@@ -281,4 +435,275 @@ Color _toneFor(BuildingType? type) {
     default:
       return const Color(0xFF8FA3BF);
   }
+}
+
+class _LayoutLinkPainter extends CustomPainter {
+  _LayoutLinkPainter({
+    required this.layout,
+    required this.state,
+    required this.cellSize,
+    required this.spacing,
+  });
+
+  final List<String?> layout;
+  final GameState state;
+  final double cellSize;
+  final double spacing;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final positivePaint = Paint()
+      ..color = const Color(0xFF5CE1E6).withAlpha(120)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final negativePaint = Paint()
+      ..color = const Color(0xFFFF6B6B).withAlpha(140)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    for (var index = 0; index < layout.length; index++) {
+      if (!state.isLayoutSlotUnlocked(index)) {
+        continue;
+      }
+      final id = layout[index];
+      if (id == null) {
+        continue;
+      }
+      final def = buildingById[id];
+      if (def == null) {
+        continue;
+      }
+      for (final neighbor in _neighborIndices(index)) {
+        if (neighbor <= index) {
+          continue;
+        }
+        if (!state.isLayoutSlotUnlocked(neighbor)) {
+          continue;
+        }
+        final neighborId = layout[neighbor];
+        if (neighborId == null) {
+          continue;
+        }
+        final neighborDef = buildingById[neighborId];
+        if (neighborDef == null) {
+          continue;
+        }
+        final linkType = _linkType(def.type, neighborDef, neighborId);
+        if (linkType == null) {
+          continue;
+        }
+        final paint =
+            linkType == _LinkType.positive ? positivePaint : negativePaint;
+        final start = _cellCenter(index);
+        final end = _cellCenter(neighbor);
+        canvas.drawLine(start, end, paint);
+      }
+    }
+  }
+
+  Offset _cellCenter(int index) {
+    final row = index ~/ layoutColumns;
+    final col = index % layoutColumns;
+    final dx = col * (cellSize + spacing) + cellSize / 2;
+    final dy = row * (cellSize + spacing) + cellSize / 2;
+    return Offset(dx, dy);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LayoutLinkPainter oldDelegate) {
+    return oldDelegate.layout != layout ||
+        oldDelegate.state != state ||
+        oldDelegate.cellSize != cellSize ||
+        oldDelegate.spacing != spacing;
+  }
+}
+
+enum _LinkType { positive, negative }
+
+_LinkType? _linkType(
+  BuildingType type,
+  BuildingDefinition neighborDef,
+  String neighborId,
+) {
+  if (neighborId == 'radiation_core' && type != BuildingType.energyProducer) {
+    return _LinkType.negative;
+  }
+  switch (type) {
+    case BuildingType.shardProducer:
+      return neighborDef.type == BuildingType.energyProducer
+          ? _LinkType.positive
+          : null;
+    case BuildingType.shardToPart:
+      return neighborDef.type == BuildingType.shardProducer
+          ? _LinkType.positive
+          : null;
+    case BuildingType.partToBlueprint:
+      return neighborDef.type == BuildingType.shardToPart
+          ? _LinkType.positive
+          : null;
+    case BuildingType.energyProducer:
+      return neighborDef.type == BuildingType.shardProducer
+          ? _LinkType.positive
+          : null;
+  }
+}
+
+double _adjacencyBonus(
+  List<String?> layout,
+  int index,
+  BuildingType type,
+  GameState state,
+) {
+  final neighbors = _neighborIndices(index);
+  var bonus = 1.0;
+  for (final n in neighbors) {
+    if (!state.isLayoutSlotUnlocked(n)) {
+      continue;
+    }
+    final neighborId = layout[n];
+    if (neighborId == null) {
+      continue;
+    }
+    final neighborDef = buildingById[neighborId];
+    if (neighborDef == null) {
+      continue;
+    }
+    if (neighborId == 'radiation_core' && type != BuildingType.energyProducer) {
+      bonus -= 0.08;
+      continue;
+    }
+    switch (type) {
+      case BuildingType.shardProducer:
+        if (neighborDef.type == BuildingType.energyProducer) {
+          bonus += 0.2;
+        }
+        break;
+      case BuildingType.shardToPart:
+        if (neighborDef.type == BuildingType.shardProducer) {
+          bonus += 0.1;
+        }
+        break;
+      case BuildingType.partToBlueprint:
+        if (neighborDef.type == BuildingType.shardToPart) {
+          bonus += 0.1;
+        }
+        break;
+      case BuildingType.energyProducer:
+        if (neighborDef.type == BuildingType.shardProducer) {
+          bonus += 0.05;
+        }
+        break;
+    }
+  }
+  return bonus.clamp(0.5, 2.0);
+}
+
+List<int> _neighborIndices(int index) {
+  final row = index ~/ layoutColumns;
+  final col = index % layoutColumns;
+  final neighbors = <int>[];
+  if (row > 0) {
+    neighbors.add(index - layoutColumns);
+  }
+  if (row < layoutRows - 1) {
+    neighbors.add(index + layoutColumns);
+  }
+  if (col > 0) {
+    neighbors.add(index - 1);
+  }
+  if (col < layoutColumns - 1) {
+    neighbors.add(index + 1);
+  }
+  return neighbors;
+}
+
+class _AdjacencyDetail {
+  const _AdjacencyDetail({
+    required this.bonus,
+    required this.entries,
+  });
+
+  final double bonus;
+  final List<String> entries;
+}
+
+_AdjacencyDetail _adjacencyDetail(
+  List<String?> layout,
+  int index,
+  BuildingType type,
+  GameState state,
+) {
+  final neighbors = _neighborIndices(index);
+  var bonus = 1.0;
+  final entries = <String>[];
+  var energyLinks = 0;
+  var shardLinks = 0;
+  var converterLinks = 0;
+  var radiationLinks = 0;
+
+  for (final n in neighbors) {
+    if (!state.isLayoutSlotUnlocked(n)) {
+      continue;
+    }
+    final neighborId = layout[n];
+    if (neighborId == null) {
+      continue;
+    }
+    if (neighborId == 'radiation_core' && type != BuildingType.energyProducer) {
+      radiationLinks += 1;
+      bonus -= 0.08;
+      continue;
+    }
+    final neighborDef = buildingById[neighborId];
+    if (neighborDef == null) {
+      continue;
+    }
+    switch (type) {
+      case BuildingType.shardProducer:
+        if (neighborDef.type == BuildingType.energyProducer) {
+          energyLinks += 1;
+          bonus += 0.2;
+        }
+        break;
+      case BuildingType.shardToPart:
+        if (neighborDef.type == BuildingType.shardProducer) {
+          shardLinks += 1;
+          bonus += 0.1;
+        }
+        break;
+      case BuildingType.partToBlueprint:
+        if (neighborDef.type == BuildingType.shardToPart) {
+          converterLinks += 1;
+          bonus += 0.1;
+        }
+        break;
+      case BuildingType.energyProducer:
+        if (neighborDef.type == BuildingType.shardProducer) {
+          shardLinks += 1;
+          bonus += 0.05;
+        }
+        break;
+    }
+  }
+
+  if (energyLinks > 0 && type == BuildingType.shardProducer) {
+    entries.add('相邻能量设施 x$energyLinks：采集 +${energyLinks * 20}%');
+  }
+  if (shardLinks > 0 && type == BuildingType.shardToPart) {
+    entries.add('相邻采集设施 x$shardLinks：转换 +${shardLinks * 10}%');
+  }
+  if (converterLinks > 0 && type == BuildingType.partToBlueprint) {
+    entries.add('相邻转换设施 x$converterLinks：合成 +${converterLinks * 10}%');
+  }
+  if (shardLinks > 0 && type == BuildingType.energyProducer) {
+    entries.add('相邻采集设施 x$shardLinks：能量 +${shardLinks * 5}%');
+  }
+  if (radiationLinks > 0) {
+    entries.add('辐射核心 x$radiationLinks：效率 -${radiationLinks * 8}%');
+  }
+
+  return _AdjacencyDetail(
+    bonus: bonus.clamp(0.5, 2.0),
+    entries: entries,
+  );
 }

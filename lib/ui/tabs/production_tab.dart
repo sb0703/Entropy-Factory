@@ -4,8 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../game/game_controller.dart';
 import '../../game/game_ui_state.dart';
 import '../../game/game_state.dart';
+import '../../game/game_math.dart';
+import '../../game/milestone_definitions.dart';
+import '../../game/research_definitions.dart';
 import '../../game/number_format.dart';
 import '../../game/run_modifiers.dart';
+import '../../game/constant_upgrades.dart';
 import '../effects/particle_layer.dart';
 import '../widgets/building_card.dart';
 import '../widgets/law_progress_card.dart';
@@ -44,26 +48,19 @@ class ProductionTab extends ConsumerWidget {
                       Text(
                         '管理设施与配比，提升整体产能与定律进度。',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF8FA3BF),
-                            ),
+                          color: const Color(0xFF8FA3BF),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       RateSummaryCard(summary: state.rateSummary),
                       const SizedBox(height: 12),
-                      _RunModifierCard(
+                      LawProgressCard(blueprints: blueprints, laws: laws),
+                      const SizedBox(height: 16),
+                      _StrategyPanel(
                         state: gameState,
+                        uiState: state,
                         controller: controller,
-                        modifiers: gameState.runModifiers,
                       ),
-                      const SizedBox(height: 12),
-                      LawProgressCard(
-                        blueprints: blueprints,
-                        laws: laws,
-                      ),
-                      const SizedBox(height: 16),
-                      const RatioPanel(),
-                      const SizedBox(height: 16),
-                      const LayoutPanel(),
                     ],
                   ),
                 ),
@@ -96,23 +93,14 @@ class ProductionTab extends ConsumerWidget {
           children: [
             Text(
               '管理设施与配比，提升整体产能与定律进度。',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
             const SizedBox(height: 12),
             RateSummaryCard(summary: state.rateSummary),
             const SizedBox(height: 12),
-            _RunModifierCard(
-              state: gameState,
-              controller: controller,
-              modifiers: gameState.runModifiers,
-            ),
-            const SizedBox(height: 12),
-            LawProgressCard(
-              blueprints: blueprints,
-              laws: laws,
-            ),
+            LawProgressCard(blueprints: blueprints, laws: laws),
             const SizedBox(height: 16),
             for (final building in state.buildings) ...[
               BuildingCard(
@@ -125,9 +113,11 @@ class ProductionTab extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
             ],
-            const RatioPanel(),
-            const SizedBox(height: 16),
-            const LayoutPanel(),
+            _StrategyPanel(
+              state: gameState,
+              uiState: state,
+              controller: controller,
+            ),
           ],
         );
       },
@@ -135,65 +125,93 @@ class ProductionTab extends ConsumerWidget {
   }
 }
 
-class _RunModifierCard extends StatelessWidget {
-  const _RunModifierCard({
+class _StrategyPanel extends StatelessWidget {
+  const _StrategyPanel({
     required this.state,
+    required this.uiState,
     required this.controller,
-    required this.modifiers,
   });
 
   final GameState state;
+  final GameUiState uiState;
   final GameController controller;
-  final List<String> modifiers;
 
   @override
   Widget build(BuildContext context) {
-    if (modifiers.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final modifiers = state.runModifiers;
     final rerollsLeft = state.runRerollsLeft;
     final rerollCost = controller.runRerollCost(state);
     final canReroll =
-        rerollsLeft > 0 &&
-        state.resource(ResourceType.blueprint) >= rerollCost;
+        rerollsLeft > 0 && state.resource(ResourceType.blueprint) >= rerollCost;
+    final summary = _summaryText(state);
+    final loadPercent = _energyLoadPercent(state);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '本轮变体',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          splashFactory: NoSplash.splashFactory,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+        title: Text(
+          '策略面板',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          '$summary ｜ 负载 $loadPercent%',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        tilePadding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '本轮变体',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                Text(
-                  '可刷新 $rerollsLeft 次',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+              ),
+              Text(
+                '可刷新 $rerollsLeft 次',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: const Color(0xFF8FA3BF),
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (modifiers.isEmpty)
+            Text(
+              '暂无变体词条',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
+            )
+          else
             for (final id in modifiers)
-              _RunModifierTile(
-                modifier: runModifierById[id],
-              ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: canReroll ? controller.rerollRunModifiers : null,
-                child: Text('刷新词条（${_formatCost(rerollCost)} 蓝图）'),
-              ),
+              _RunModifierTile(modifier: runModifierById[id]),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: canReroll ? controller.rerollRunModifiers : null,
+              child: Text('刷新词条（${_formatCost(rerollCost)} 蓝图）'),
             ),
-          ],
+          ),
+          const SizedBox(height: 12),
+          const RatioPanel(),
+          const SizedBox(height: 16),
+          const LayoutPanel(),
+        ],
         ),
       ),
     );
@@ -201,9 +219,7 @@ class _RunModifierCard extends StatelessWidget {
 }
 
 class _RunModifierTile extends StatelessWidget {
-  const _RunModifierTile({
-    required this.modifier,
-  });
+  const _RunModifierTile({required this.modifier});
 
   final RunModifier? modifier;
 
@@ -233,24 +249,24 @@ class _RunModifierTile extends StatelessWidget {
                   child: Text(
                     modifier!.title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 Text(
                   tierLabel,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: tone,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: tone),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
               modifier!.description,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
           ],
         ),
@@ -283,4 +299,32 @@ Color _toneForTier(RunModifierTier tier) {
 
 String _formatCost(Object value) {
   return formatNumber(value);
+}
+
+String _summaryText(GameState state) {
+  final modifierCount = state.runModifiers.length;
+  final layoutText = state.isLayoutUnlocked
+      ? '布局 ${state.layoutUnlockedCount} 格'
+      : '布局未解锁';
+  return '变体 $modifierCount 项 · $layoutText';
+}
+
+int _energyLoadPercent(GameState state) {
+  final effects = computeResearchEffects(
+    state,
+  ).combine(computeMilestoneEffects(state));
+  final constants = computeConstantEffects(state);
+  final rates = GameRates.fromState(state, effects, constants);
+  final baseEnergyProd =
+      energyProductionPerSec(state, effects) * constants.productionMultiplier;
+  final energyNeed = partSynthesisEnergyNeedPerSec(state, effects);
+  final energySplit = effectiveEnergySplit(
+    state: state,
+    energyProd: baseEnergyProd,
+    energyNeed: energyNeed,
+  );
+  final energyAvailable = rates.energyPerSec * energySplit;
+  final available = energyAvailable <= 0 ? 0.0001 : energyAvailable;
+  final load = (rates.energyNeedPerSec / available).clamp(0.0, 2.0);
+  return (load * 100).round();
 }
