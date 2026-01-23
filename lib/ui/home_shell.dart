@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/game_controller.dart';
@@ -34,11 +34,11 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    // 在构建期监听离线收益日志，避免重复弹窗。
+    // 在构建时监听离线收益日志，避免重复弹窗。
     return Consumer(
       builder: (context, ref, _) {
         ref.listen<GameState>(gameControllerProvider, (previous, next) {
-          // 仅取最近的离线收益，并限制触发窗口。
+          // 只取最近的离线收益，并限制触发窗口。
           final entry = _latestOfflineEntry(next);
           if (entry == null) {
             return;
@@ -54,7 +54,7 @@ class _HomeShellState extends State<HomeShell> {
           _showOfflineGainDialog(entry.detail);
         });
 
-        // 主界面包含背景、资源栏、底部导航与页面栈。
+        // 主界面包含背景、资源条、底部导航与页面容器。
         return Stack(
           children: [
             const SpaceBackground(),
@@ -139,7 +139,9 @@ class _HomeShellState extends State<HomeShell> {
       builder: (context) {
         return AlertDialog(
           title: const Text('离线收益'),
-          content: Text('本次离线期间获得：\n$formatted'),
+          content: SingleChildScrollView(
+            child: Text('本次离线期间获得：\n$formatted'),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -151,3 +153,4 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 }
+

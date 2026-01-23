@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -65,7 +65,7 @@ class _BuildingCardState extends State<BuildingCard>
   }
 
   void _handleBuy(VoidCallback onBuy) {
-    // 购买时触发轻量级缩放反馈。
+    // 购买时触发轻量级反馈与粒子效果。
     _triggerPulse();
     HapticFeedback.lightImpact();
     _emitParticle();
@@ -154,7 +154,7 @@ class _BuildingCardState extends State<BuildingCard>
                       color: const Color(0xFF9CB0C9),
                     ),
               ),
-              const SizedBox(height: 8),
+              const Divider(height: 18, color: Color(0x331C2A3A)),
               Text(
                 data.costText,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -178,10 +178,11 @@ class _BuildingCardState extends State<BuildingCard>
                 runSpacing: 8,
                 children: [
                   _ActionButton(
-                    label: '买1',
+                    label: '购买',
                     onPressed: data.canBuyOne
                         ? () => _handleBuy(widget.onBuyOne)
                         : null,
+                    isPrimary: true,
                   ),
                   _ActionButton(
                     label: '买10',
@@ -254,10 +255,15 @@ class _Badge extends StatelessWidget {
 }
 
 class _ActionButton extends StatefulWidget {
-  const _ActionButton({required this.label, required this.onPressed});
+  const _ActionButton({
+    required this.label,
+    required this.onPressed,
+    this.isPrimary = false,
+  });
 
   final String label;
   final VoidCallback? onPressed;
+  final bool isPrimary;
 
   @override
   State<_ActionButton> createState() => _ActionButtonState();
@@ -291,17 +297,27 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final baseStyle = ButtonStyle(
+      minimumSize: WidgetStateProperty.all(const Size(88, 40)),
+      padding: WidgetStateProperty.all(
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      ),
+    );
     return GestureDetector(
       onLongPressStart: (_) => _startRepeat(),
       onLongPressEnd: (_) => _stopRepeat(),
       onLongPressCancel: _stopRepeat,
       child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.onSurface,
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.primary.withAlpha(102),
+        style: baseStyle.merge(
+          OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.primary.withAlpha(
+                    widget.isPrimary ? 200 : 102,
+                  ),
+              width: widget.isPrimary ? 1.4 : 1,
+            ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
         onPressed: widget.onPressed,
         child: Text(widget.label),

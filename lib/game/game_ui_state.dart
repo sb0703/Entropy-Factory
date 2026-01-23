@@ -142,6 +142,8 @@ class GameUiState {
     required this.researchNodes,
     required this.milestones,
     required this.logEntries,
+    required this.partBottleneck,
+    required this.energyOverload,
   });
 
   final List<ResourceDisplay> resources;
@@ -150,6 +152,8 @@ class GameUiState {
   final List<ResearchNodeDisplay> researchNodes;
   final List<MilestoneDisplay> milestones;
   final List<LogEntry> logEntries;
+  final bool partBottleneck;
+  final bool energyOverload;
 
   static GameUiState fromState(
     GameState state,
@@ -227,6 +231,8 @@ class GameUiState {
             timeLabel: _formatLogTime(entry.timeMs),
           ),
       ],
+      partBottleneck: rates.partBottleneck,
+      energyOverload: rates.energyOverload,
     );
   }
 }

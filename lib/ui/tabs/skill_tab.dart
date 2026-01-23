@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../game/big_number.dart';
@@ -193,7 +194,12 @@ class _SkillHeader extends StatelessWidget {
                   ),
                 ),
                 FilledButton(
-                  onPressed: canBuySkillPoint ? controller.buySkillPoint : null,
+                  onPressed: canBuySkillPoint
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          controller.buySkillPoint();
+                        }
+                      : null,
                   child: const Text('兑换'),
                 ),
               ],
@@ -468,7 +474,10 @@ class _SkillDetailPanel extends StatelessWidget {
                   if (canUseBlueprints)
                     FilledButton(
                       onPressed: canUnlockBlueprints
-                          ? () => controller.unlockSkillWithBlueprints(def.id)
+                          ? () {
+                              HapticFeedback.lightImpact();
+                              controller.unlockSkillWithBlueprints(def.id);
+                            }
                           : null,
                       child: const Text('使用蓝图解锁'),
                     ),
@@ -477,7 +486,10 @@ class _SkillDetailPanel extends StatelessWidget {
                   if (canUsePoints)
                     OutlinedButton(
                       onPressed: canUnlockPoints
-                          ? () => controller.unlockSkillWithPoints(def.id)
+                          ? () {
+                              HapticFeedback.lightImpact();
+                              controller.unlockSkillWithPoints(def.id);
+                            }
                           : null,
                       child: const Text('使用技能点解锁'),
                     ),
@@ -488,7 +500,10 @@ class _SkillDetailPanel extends StatelessWidget {
                 children: [
                   FilledButton(
                     onPressed: canEquip
-                        ? () => controller.toggleEquipSkill(def.id)
+                        ? () {
+                            HapticFeedback.lightImpact();
+                            controller.toggleEquipSkill(def.id);
+                          }
                         : null,
                     child: Text(isEquipped ? '卸下' : '装配'),
                   ),

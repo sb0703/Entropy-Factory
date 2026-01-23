@@ -43,8 +43,10 @@ class _ResourceBarState extends ConsumerState<ResourceBar> {
               tone: resource.tone,
               isAlert: resource.isAlert,
             ),
-          if (state.resources.any((resource) => resource.isAlert))
+          if (state.partBottleneck)
             _AlertPill(text: '零件不足，蓝图合成受限'),
+          if (state.energyOverload)
+            _AlertPill(text: '能量过载，合成效率下降'),
         ],
       ),
     );
@@ -238,27 +240,59 @@ class _ResourcePillState extends State<ResourcePill>
   }
 }
 
-class _AlertPill extends StatelessWidget {
+class _AlertPill extends StatefulWidget {
   const _AlertPill({required this.text});
 
   final String text;
 
   @override
+  State<_AlertPill> createState() => _AlertPillState();
+}
+
+class _AlertPillState extends State<_AlertPill>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulse = CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2B1518),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFF6B6B)),
-      ),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: const Color(0xFFFF9A9A),
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) {
+        final borderAlpha = (120 + 80 * _pulse.value).round();
+        final bgAlpha = (36 + 24 * _pulse.value).round();
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2B1518).withAlpha(bgAlpha),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFFF6B6B).withAlpha(borderAlpha)),
+          ),
+          child: Text(
+            widget.text,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: const Color(0xFFFF9A9A),
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        );
+      },
     );
   }
 }

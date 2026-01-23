@@ -107,6 +107,27 @@ const List<BuildingDefinition> buildingDefinitions = [
     type: BuildingType.shardProducer,
     baseOutputPerSec: 25,
   ),
+
+  BuildingDefinition(
+    id: 'excavator',
+    name: '重型挖掘机',
+    description: '中期碎片采集装置。',
+    costResource: ResourceType.shard,
+    baseCost: 250000,
+    costGrowth: 1.22,
+    type: BuildingType.shardProducer,
+    baseOutputPerSec: 120,
+  ),
+  BuildingDefinition(
+    id: 'quantum_drill',
+    name: '量子钻机',
+    description: '高端碎片采集设施。',
+    costResource: ResourceType.shard,
+    baseCost: 2000000,
+    costGrowth: 1.24,
+    type: BuildingType.shardProducer,
+    baseOutputPerSec: 600,
+  ),
   BuildingDefinition(
     id: 'compressor',
     name: '压缩器',
@@ -127,6 +148,18 @@ const List<BuildingDefinition> buildingDefinitions = [
     type: BuildingType.partToBlueprint,
     baseOutputPerSec: 1,
     energyCostPerSec: 80,
+  ),
+
+  BuildingDefinition(
+    id: 'nanoforge',
+    name: '纳米熔炉',
+    description: '进阶蓝图合成设施。',
+    costResource: ResourceType.part,
+    baseCost: 1500,
+    costGrowth: 1.28,
+    type: BuildingType.partToBlueprint,
+    baseOutputPerSec: 3.5,
+    energyCostPerSec: 220,
   ),
   BuildingDefinition(
     id: 'fusion',

@@ -13,7 +13,6 @@ class LogTab extends ConsumerWidget {
     final state = ref.watch(gameUiProvider);
     final controller = ref.read(gameControllerProvider.notifier);
     final showEmpty = state.logEntries.isEmpty;
-
     // 顶部固定存档与里程碑，其后显示事件日志。
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -23,9 +22,9 @@ class LogTab extends ConsumerWidget {
         if (index == 0) {
           return Text(
             '记录关键事件、里程碑与存档操作',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF8FA3BF),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
           );
         }
 
@@ -35,9 +34,9 @@ class LogTab extends ConsumerWidget {
               final jsonText = controller.exportSave();
               await Clipboard.setData(ClipboardData(text: jsonText));
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('存档已复制到剪贴板')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('存档已复制到剪贴板')));
               }
             },
             onImport: () async {
@@ -48,9 +47,7 @@ class LogTab extends ConsumerWidget {
               final success = await controller.importSave(jsonText.trim());
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(success ? '存档导入成功' : '存档导入失败'),
-                  ),
+                  SnackBar(content: Text(success ? '存档导入成功' : '存档导入失败')),
                 );
               }
             },
@@ -66,9 +63,9 @@ class LogTab extends ConsumerWidget {
             padding: const EdgeInsets.only(top: 12),
             child: Text(
               '暂无记录',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
           );
         }
@@ -95,15 +92,15 @@ class LogTab extends ConsumerWidget {
                       Text(
                         entry.title,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         entry.detail,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF9CB0C9),
-                            ),
+                          color: const Color(0xFF9CB0C9),
+                        ),
                       ),
                     ],
                   ),
@@ -111,8 +108,8 @@ class LogTab extends ConsumerWidget {
                 Text(
                   entry.timeLabel,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
               ],
             ),
@@ -124,10 +121,7 @@ class LogTab extends ConsumerWidget {
 }
 
 class _ArchiveCard extends StatelessWidget {
-  const _ArchiveCard({
-    required this.onExport,
-    required this.onImport,
-  });
+  const _ArchiveCard({required this.onExport, required this.onImport});
 
   final VoidCallback onExport;
   final VoidCallback onImport;
@@ -142,31 +136,25 @@ class _ArchiveCard extends StatelessWidget {
           children: [
             Text(
               '存档管理',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                OutlinedButton(
-                  onPressed: onExport,
-                  child: const Text('复制存档'),
-                ),
-                FilledButton(
-                  onPressed: onImport,
-                  child: const Text('导入存档'),
-                ),
+                OutlinedButton(onPressed: onExport, child: const Text('复制存档')),
+                FilledButton(onPressed: onImport, child: const Text('导入存档')),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               '导入会覆盖当前进度',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
           ],
         ),
@@ -190,17 +178,17 @@ class _MilestoneCard extends StatelessWidget {
           children: [
             Text(
               '里程碑',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             if (milestones.isEmpty)
               Text(
                 '暂无里程碑',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF8FA3BF),
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
               ),
             for (final milestone in milestones) ...[
               _MilestoneRow(milestone: milestone),
@@ -238,40 +226,37 @@ class _MilestoneRow extends StatelessWidget {
               Container(
                 width: 6,
                 height: 6,
-                decoration: BoxDecoration(
-                  color: tone,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
               Text(
                 milestone.title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               const Spacer(),
               Text(
                 milestone.achieved ? '已达成' : '未达成',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: tone,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: tone),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             milestone.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF9CB0C9),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF9CB0C9)),
           ),
           const SizedBox(height: 4),
           Text(
             milestone.effectText,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF8FA3BF),
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
           ),
         ],
       ),

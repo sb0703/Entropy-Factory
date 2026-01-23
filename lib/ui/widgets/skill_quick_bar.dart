@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../game/game_controller.dart';
@@ -132,7 +133,12 @@ class _SkillQuickButton extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: canUse ? () => controller.activateSkill(skill.id) : null,
+                  onPressed: canUse
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          controller.activateSkill(skill.id);
+                        }
+                      : null,
                   child: const Text('启用'),
                 ),
               ),

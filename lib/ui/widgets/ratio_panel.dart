@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../game/constant_upgrades.dart';
@@ -242,11 +242,31 @@ class _EnergyFlowMeterState extends State<_EnergyFlowMeter>
                       ),
                 ),
                 Text(
-                  isOverload ? '过载 $displayPercent%' : '负载 $displayPercent%',
+                  isOverload
+                      ? '过载 $displayPercent%'
+                      : '负载 $displayPercent%',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: isOverload
                             ? const Color(0xFFFF6B6B)
                             : const Color(0xFF8FA3BF),
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '供给 ${_formatRate(widget.availablePerSec)} / 秒',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF8FA3BF),
+                      ),
+                ),
+                Text(
+                  '需求 ${_formatRate(widget.needPerSec)} / 秒',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF8FA3BF),
                       ),
                 ),
               ],
@@ -308,7 +328,7 @@ class _EnergyFlowMeterState extends State<_EnergyFlowMeter>
             const SizedBox(height: 6),
             Text(
               isOverload
-                  ? '过载警告：合成效率骤降'
+                  ? '过载警告：合成效率下降'
                   : '合成效率 $efficiencyPercent%',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: isOverload
@@ -321,4 +341,8 @@ class _EnergyFlowMeterState extends State<_EnergyFlowMeter>
       },
     );
   }
+}
+
+String _formatRate(double value) {
+  return value.toStringAsFixed(1);
 }

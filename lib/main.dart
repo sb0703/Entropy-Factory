@@ -2,9 +2,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-import 'services/save_service.dart';
-import 'theme/app_theme.dart';
-import 'ui/home_shell.dart';
+import 'package:flutter_game_test/services/save_service.dart';
+import 'package:flutter_game_test/theme/app_theme.dart';
+import 'package:flutter_game_test/ui/home_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
