@@ -26,11 +26,40 @@ class SkillQuickBar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '技能快捷栏',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: const Color(0xFF8FA3BF),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '技能快捷栏',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFF8FA3BF),
+                      ),
                 ),
+              ),
+              Text(
+                state.autoCastEnabled ? '自动施放' : '手动施放',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: controller.isGlobalCooldownActive(state)
+                  ? null
+                  : () {
+                      HapticFeedback.lightImpact();
+                      controller.activateGlobalCooldownBurst();
+                    },
+              child: Text(
+                controller.isGlobalCooldownActive(state)
+                    ? '全局冷却 ${_formatDuration(controller.globalCooldownRemainingMs(state))}'
+                    : '全局释放',
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           SingleChildScrollView(

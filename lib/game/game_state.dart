@@ -30,6 +30,9 @@ class GameState {
     required this.completedChallenges,
     required this.permanentUnlocks,
     required this.runModifiers,
+    required this.runRerollsLeft,
+    required this.autoCastEnabled,
+    required this.globalCooldownEndsAtMs,
     required this.skillPoints,
     required this.unlockedSkills,
     required this.equippedSkills,
@@ -67,6 +70,12 @@ class GameState {
   final Set<String> permanentUnlocks;
 
   final List<String> runModifiers;
+
+  final int runRerollsLeft;
+
+  final bool autoCastEnabled;
+
+  final int globalCooldownEndsAtMs;
 
   final int skillPoints;
 
@@ -171,6 +180,9 @@ class GameState {
     Set<String>? completedChallenges,
     Set<String>? permanentUnlocks,
     List<String>? runModifiers,
+    int? runRerollsLeft,
+    bool? autoCastEnabled,
+    int? globalCooldownEndsAtMs,
     int? skillPoints,
     Set<String>? unlockedSkills,
     List<String>? equippedSkills,
@@ -199,6 +211,9 @@ class GameState {
       completedChallenges: completedChallenges ?? this.completedChallenges,
       permanentUnlocks: permanentUnlocks ?? this.permanentUnlocks,
       runModifiers: runModifiers ?? this.runModifiers,
+      runRerollsLeft: runRerollsLeft ?? this.runRerollsLeft,
+      autoCastEnabled: autoCastEnabled ?? this.autoCastEnabled,
+      globalCooldownEndsAtMs: globalCooldownEndsAtMs ?? this.globalCooldownEndsAtMs,
       skillPoints: skillPoints ?? this.skillPoints,
       unlockedSkills: unlockedSkills ?? this.unlockedSkills,
       equippedSkills: equippedSkills ?? this.equippedSkills,
@@ -253,6 +268,9 @@ class GameState {
       'completedChallenges': completedChallenges.toList(),
       'permanentUnlocks': permanentUnlocks.toList(),
       'runModifiers': runModifiers,
+      'runRerollsLeft': runRerollsLeft,
+      'autoCastEnabled': autoCastEnabled,
+      'globalCooldownEndsAtMs': globalCooldownEndsAtMs,
       'skillPoints': skillPoints,
       'unlockedSkills': unlockedSkills.toList(),
       'equippedSkills': equippedSkills,
@@ -412,6 +430,13 @@ class GameState {
       completedChallenges: completedChallenges,
       permanentUnlocks: permanentUnlocks,
       runModifiers: runModifiers,
+      runRerollsLeft:
+          (json['runRerollsLeft'] as num?)?.toInt() ?? defaults.runRerollsLeft,
+      autoCastEnabled:
+          json['autoCastEnabled'] as bool? ?? defaults.autoCastEnabled,
+      globalCooldownEndsAtMs:
+          (json['globalCooldownEndsAtMs'] as num?)?.toInt() ??
+              defaults.globalCooldownEndsAtMs,
       skillPoints: (json['skillPoints'] as num?)?.toInt() ?? 0,
       unlockedSkills: unlockedSkills,
       equippedSkills: equippedSkills,
@@ -483,6 +508,9 @@ class GameState {
       completedChallenges: const <String>{},
       permanentUnlocks: const <String>{},
       runModifiers: const <String>[],
+      runRerollsLeft: 2,
+      autoCastEnabled: false,
+      globalCooldownEndsAtMs: 0,
       skillPoints: 0,
       unlockedSkills: const <String>{},
       equippedSkills: const <String>[],

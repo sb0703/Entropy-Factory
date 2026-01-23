@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../game/game_controller.dart';
 import '../../game/game_ui_state.dart';
 import '../../game/game_state.dart';
+import '../../game/number_format.dart';
 import '../../game/run_modifiers.dart';
 import '../effects/particle_layer.dart';
 import '../widgets/building_card.dart';
@@ -41,7 +42,7 @@ class ProductionTab extends ConsumerWidget {
                   child: Column(
                     children: [
                       Text(
-                        '管理设施与配比，提升整体产能与定律进度',
+                        '管理设施与配比，提升整体产能与定律进度。',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: const Color(0xFF8FA3BF),
                             ),
@@ -50,6 +51,8 @@ class ProductionTab extends ConsumerWidget {
                       RateSummaryCard(summary: state.rateSummary),
                       const SizedBox(height: 12),
                       _RunModifierCard(
+                        state: gameState,
+                        controller: controller,
                         modifiers: gameState.runModifiers,
                       ),
                       const SizedBox(height: 12),
@@ -92,7 +95,7 @@ class ProductionTab extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             Text(
-              '管理设施与配比，提升整体产能与定律进度',
+              '管理设施与配比，提升整体产能与定律进度。',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF8FA3BF),
                   ),
@@ -101,6 +104,8 @@ class ProductionTab extends ConsumerWidget {
             RateSummaryCard(summary: state.rateSummary),
             const SizedBox(height: 12),
             _RunModifierCard(
+              state: gameState,
+              controller: controller,
               modifiers: gameState.runModifiers,
             ),
             const SizedBox(height: 12),
@@ -132,9 +137,13 @@ class ProductionTab extends ConsumerWidget {
 
 class _RunModifierCard extends StatelessWidget {
   const _RunModifierCard({
+    required this.state,
+    required this.controller,
     required this.modifiers,
   });
 
+  final GameState state;
+  final GameController controller;
   final List<String> modifiers;
 
   @override
@@ -142,23 +151,48 @@ class _RunModifierCard extends StatelessWidget {
     if (modifiers.isEmpty) {
       return const SizedBox.shrink();
     }
+    final rerollsLeft = state.runRerollsLeft;
+    final rerollCost = controller.runRerollCost(state);
+    final canReroll =
+        rerollsLeft > 0 &&
+        state.resource(ResourceType.blueprint) >= rerollCost;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '本轮变体',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '本轮变体',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
+                ),
+                Text(
+                  '可刷新 $rerollsLeft 次',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF8FA3BF),
+                      ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             for (final id in modifiers)
               _RunModifierTile(
                 modifier: runModifierById[id],
               ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: canReroll ? controller.rerollRunModifiers : null,
+                child: Text('刷新词条（${_formatCost(rerollCost)} 蓝图）'),
+              ),
+            ),
           ],
         ),
       ),
@@ -178,6 +212,8 @@ class _RunModifierTile extends StatelessWidget {
     if (modifier == null) {
       return const SizedBox.shrink();
     }
+    final tone = _toneForTier(modifier!.tier);
+    final tierLabel = _tierLabel(modifier!.tier);
     return SizedBox(
       width: double.infinity,
       child: Container(
@@ -186,16 +222,28 @@ class _RunModifierTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF0F1B2D),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF22324A)),
+          border: Border.all(color: tone.withAlpha(120)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              modifier!.title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    modifier!.title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
+                ),
+                Text(
+                  tierLabel,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: tone,
+                      ),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
@@ -209,4 +257,30 @@ class _RunModifierTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _tierLabel(RunModifierTier tier) {
+  switch (tier) {
+    case RunModifierTier.positive:
+      return '正面';
+    case RunModifierTier.negative:
+      return '负面';
+    case RunModifierTier.chaos:
+      return '混沌';
+  }
+}
+
+Color _toneForTier(RunModifierTier tier) {
+  switch (tier) {
+    case RunModifierTier.positive:
+      return const Color(0xFF8BE4B4);
+    case RunModifierTier.negative:
+      return const Color(0xFFFF6B6B);
+    case RunModifierTier.chaos:
+      return const Color(0xFFF5C542);
+  }
+}
+
+String _formatCost(Object value) {
+  return formatNumber(value);
 }

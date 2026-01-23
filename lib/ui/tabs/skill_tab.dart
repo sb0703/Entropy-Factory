@@ -137,6 +137,8 @@ class _SkillHeader extends StatelessWidget {
     final skillPointCost = controller.skillPointCost(state.skillPoints);
     final canBuySkillPoint =
         state.resource(ResourceType.blueprint) >= skillPointCost;
+    final gcdRemaining = controller.globalCooldownRemainingMs(state);
+    final gcdReady = gcdRemaining <= 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,6 +204,52 @@ class _SkillHeader extends StatelessWidget {
                         }
                       : null,
                   child: const Text('兑换'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '自动施放主动技能',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    Switch(
+                      value: state.autoCastEnabled,
+                      onChanged: controller.setAutoCastEnabled,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  state.autoCastEnabled ? '自动触发冷却结束的主动技能' : '关闭以手动触发主动技能',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF8FA3BF),
+                      ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: gcdReady ? controller.activateGlobalCooldownBurst : null,
+                    child: Text(
+                      gcdReady
+                          ? '全局释放'
+                          : '全局冷却 ${_formatDuration(gcdRemaining)}',
+                    ),
+                  ),
                 ),
               ],
             ),

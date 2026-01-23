@@ -37,6 +37,9 @@ class GameController extends StateNotifier<GameState> {
   static const int _simTickMs = 100;
   static const int _uiSyncMs = 500;
   static const int _pulseCooldownMs = 90 * 1000;
+  static const int _runRerollsMax = 2;
+  static const int _globalCooldownMs = 6 * 60 * 1000;
+  static const int _autoCastIntervalMs = 1000;
 
   GameController() : super(GameState.initial()) {
     _simState = state;
@@ -56,6 +59,7 @@ class GameController extends StateNotifier<GameState> {
   late GameState _simState;
   int _lastSimMs = 0;
   int _lastUiSyncMs = 0;
+  int _lastAutoCastMs = 0;
 
   void _onSimTick() {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -65,6 +69,7 @@ class GameController extends StateNotifier<GameState> {
       return;
     }
     _simulate(dtSeconds);
+    _autoCastActiveSkills(nowMs);
     if (nowMs - _lastUiSyncMs >= _uiSyncMs) {
       state = _simState;
       _lastUiSyncMs = nowMs;
@@ -183,7 +188,10 @@ class GameController extends StateNotifier<GameState> {
       _simState = state;
     }
     if (_simState.runModifiers.isEmpty) {
-      _simState = _simState.copyWith(runModifiers: _rollRunModifiers());
+      _simState = _simState.copyWith(
+        runModifiers: _rollRunModifiers(),
+        runRerollsLeft: _runRerollsMax,
+      );
       state = _simState;
       _lastUiSyncMs = DateTime.now().millisecondsSinceEpoch;
     }
@@ -305,6 +313,10 @@ class GameController extends StateNotifier<GameState> {
 
   void setEnergyPriorityMode(EnergyPriorityMode mode) {
     _commitState(_simState.copyWith(energyPriorityMode: mode));
+  }
+
+  void setAutoCastEnabled(bool value) {
+    _commitState(_simState.copyWith(autoCastEnabled: value));
   }
 
   void placeBuildingInLayout(String buildingId, int index) {
@@ -439,7 +451,7 @@ class GameController extends StateNotifier<GameState> {
     }
     final challenge = prestigeChallenges.firstWhere(
       (def) => def.id == challengeId,
-      orElse: () => const PrestigeChallenge(
+      orElse: () => PrestigeChallenge(
         id: '',
         title: '',
         description: '',
@@ -463,6 +475,7 @@ class GameController extends StateNotifier<GameState> {
       completedChallenges: {..._simState.completedChallenges},
       permanentUnlocks: {..._simState.permanentUnlocks},
       runModifiers: _rollRunModifiers(),
+      runRerollsLeft: _runRerollsMax,
       skillPoints: _simState.skillPoints,
       unlockedSkills: {..._simState.unlockedSkills},
       equippedSkills: [..._simState.equippedSkills],
@@ -488,6 +501,7 @@ class GameController extends StateNotifier<GameState> {
       completedChallenges: {..._simState.completedChallenges},
       permanentUnlocks: {..._simState.permanentUnlocks},
       runModifiers: _rollRunModifiers(),
+      runRerollsLeft: _runRerollsMax,
       skillPoints: _simState.skillPoints,
       unlockedSkills: {..._simState.unlockedSkills},
       equippedSkills: [..._simState.equippedSkills],
@@ -822,6 +836,7 @@ class GameController extends StateNotifier<GameState> {
       completedChallenges: completedChallenges,
       permanentUnlocks: permanentUnlocks,
       runModifiers: _rollRunModifiers(),
+      runRerollsLeft: _runRerollsMax,
       skillPoints: _simState.skillPoints,
       unlockedSkills: {..._simState.unlockedSkills},
       equippedSkills: [..._simState.equippedSkills],
@@ -867,6 +882,37 @@ class GameController extends StateNotifier<GameState> {
         _simState.buildings.hashCode;
     final random = math.Random(seed);
     return rollRunModifiers(random);
+  }
+
+  int runRerollsMax() => _runRerollsMax;
+
+  BigNumber runRerollCost(GameState state) {
+    final used = _runRerollsMax - state.runRerollsLeft;
+    final cost = 8 * math.pow(2, math.max(0, used)).toDouble();
+    return BigNumber.fromDouble(cost);
+  }
+
+  void rerollRunModifiers() {
+    if (_simState.runRerollsLeft <= 0) {
+      return;
+    }
+    final cost = runRerollCost(_simState);
+    final currency = _simState.resource(ResourceType.blueprint);
+    if (currency < cost) {
+      return;
+    }
+    final next = _rollRunModifiers();
+    _commitState(
+      _simState.copyWith(
+        resources: {
+          ..._simState.resources,
+          ResourceType.blueprint: currency - cost,
+        },
+        runModifiers: next,
+        runRerollsLeft: _simState.runRerollsLeft - 1,
+      ),
+    );
+    _commitState(_simState.addLogEntry('变体刷新', '刷新本轮变体词条'));
   }
 
   int maxSkillSlots(GameState state) {
@@ -966,26 +1012,98 @@ class GameController extends StateNotifier<GameState> {
   }
 
   void activateSkill(String skillId) {
+    if (_isGlobalCooldownActive(_simState, DateTime.now().millisecondsSinceEpoch)) {
+      return;
+    }
     if (!_simState.equippedSkills.contains(skillId)) {
       return;
     }
-    switch (skillId) {
-      case 'skill_time_warp':
-        activateTimeWarp();
-        return;
-      case 'skill_overclock':
-        activateOverclock();
-        return;
-      case 'skill_pulse':
-        _activatePulse();
-        return;
-    }
+    _activateSkillInternal(skillId, DateTime.now().millisecondsSinceEpoch);
   }
 
-  void _activatePulse() {
+  bool isGlobalCooldownActive(GameState state) {
+    return _isGlobalCooldownActive(state, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  int globalCooldownRemainingMs(GameState state) {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    if (nowMs < _simState.pulseCooldownEndsAtMs) {
+    return math.max(0, state.globalCooldownEndsAtMs - nowMs);
+  }
+
+  int globalCooldownMs() => _globalCooldownMs;
+
+  void activateGlobalCooldownBurst() {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (_isGlobalCooldownActive(_simState, nowMs)) {
       return;
+    }
+    final activeSkills = equippedActiveSkills(_simState);
+    if (activeSkills.isEmpty) {
+      return;
+    }
+    var triggered = false;
+    for (final skill in activeSkills) {
+      triggered = _activateSkillInternal(skill.id, nowMs) || triggered;
+    }
+    if (!triggered) {
+      return;
+    }
+    _commitState(
+      _simState.copyWith(globalCooldownEndsAtMs: nowMs + _globalCooldownMs),
+    );
+    _commitState(_simState.addLogEntry('全局冷却', '触发全局释放，进入冷却'));
+  }
+
+  bool _activateSkillInternal(String skillId, int nowMs) {
+    if (!_simState.equippedSkills.contains(skillId)) {
+      return false;
+    }
+    switch (skillId) {
+      case 'skill_time_warp':
+        return _activateTimeWarpInternal(nowMs);
+      case 'skill_overclock':
+        return _activateOverclockInternal(nowMs);
+      case 'skill_pulse':
+        return _activatePulseInternal(nowMs);
+    }
+    return false;
+  }
+
+  bool _activateTimeWarpInternal(int nowMs) {
+    if (nowMs < _simState.timeWarpCooldownEndsAtMs) {
+      return false;
+    }
+    final durationMs = timeWarpDurationMs(_simState);
+    final cooldownMs = timeWarpCooldownMs(_simState);
+    _commitState(
+      _simState.copyWith(
+        timeWarpEndsAtMs: nowMs + durationMs,
+        timeWarpCooldownEndsAtMs: nowMs + cooldownMs,
+      ),
+    );
+    _commitState(_simState.addLogEntry('主动技能', '时间扭曲启动'));
+    return true;
+  }
+
+  bool _activateOverclockInternal(int nowMs) {
+    if (nowMs < _simState.overclockCooldownEndsAtMs) {
+      return false;
+    }
+    final durationMs = overclockDurationMs(_simState);
+    final cooldownMs = overclockCooldownMs(_simState);
+    _commitState(
+      _simState.copyWith(
+        overclockEndsAtMs: nowMs + durationMs,
+        overclockCooldownEndsAtMs: nowMs + cooldownMs,
+      ),
+    );
+    _commitState(_simState.addLogEntry('主动技能', '手动超频启动'));
+    return true;
+  }
+
+  bool _activatePulseInternal(int nowMs) {
+    if (nowMs < _simState.pulseCooldownEndsAtMs) {
+      return false;
     }
     final effects = _currentEffects(_simState);
     final constants = _currentConstants(_simState);
@@ -1002,6 +1120,31 @@ class GameController extends StateNotifier<GameState> {
         pulseCooldownEndsAtMs: nowMs + _pulseCooldownMs,
       ),
     );
+    _commitState(_simState.addLogEntry('主动技能', '资源脉冲启动'));
+    return true;
+  }
+
+  void _autoCastActiveSkills(int nowMs) {
+    if (!_simState.autoCastEnabled) {
+      return;
+    }
+    if (_isGlobalCooldownActive(_simState, nowMs)) {
+      return;
+    }
+    if (nowMs - _lastAutoCastMs < _autoCastIntervalMs) {
+      return;
+    }
+    var triggered = false;
+    for (final skill in equippedActiveSkills(_simState)) {
+      triggered = _activateSkillInternal(skill.id, nowMs) || triggered;
+    }
+    if (triggered) {
+      _lastAutoCastMs = nowMs;
+    }
+  }
+
+  bool _isGlobalCooldownActive(GameState state, int nowMs) {
+    return state.globalCooldownEndsAtMs > nowMs;
   }
 }
 

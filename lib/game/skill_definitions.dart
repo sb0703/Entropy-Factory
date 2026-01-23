@@ -110,7 +110,7 @@ const List<SkillDefinition> skillDefinitions = [
   SkillDefinition(
     id: 'skill_cost_stabilizer',
     name: '稳定增殖',
-    description: '采集成本增幅 -0.02。',
+    description: '采集成本增长 -0.02。',
     type: SkillType.passive,
     icon: Icons.timeline,
     costSkillPoints: 2,
@@ -153,7 +153,8 @@ ResearchEffects computeSkillEffects(GameState state) {
         break;
       case 'skill_blueprint_boost':
         effects = effects.copyWith(
-          blueprintProductionMultiplier: effects.blueprintProductionMultiplier * 1.20,
+          blueprintProductionMultiplier:
+              effects.blueprintProductionMultiplier * 1.20,
         );
         break;
       case 'skill_energy_saver':
