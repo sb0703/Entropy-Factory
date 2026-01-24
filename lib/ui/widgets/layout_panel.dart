@@ -15,7 +15,6 @@ class LayoutPanel extends ConsumerStatefulWidget {
 
 class _LayoutPanelState extends ConsumerState<LayoutPanel> {
   String? _selectedId;
-  int? _selectedIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -89,21 +88,21 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
             ),
             const SizedBox(height: 4),
             Text(
-              '辐射核心会削弱周围设施 -8%（可叠加，最低保留 50%）。',
+              '连线加成：采集←能量 +20%/条；能量←采集 +5%/条；转换←采集 +10%/条；合成←转换 +10%/条。',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF6F8198),
                   ),
             ),
             const SizedBox(height: 4),
             Text(
-              '效率说明：采集 +20%/能量，能量 +5%/采集，转换 +10%/采集，合成 +10%/转换。',
+              '辐射削弱：辐射核心→周围 -8%/条（可叠加，最低保留 50%）。',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF6F8198),
                   ),
             ),
             const SizedBox(height: 4),
             Text(
-              '连线提示：青色连线表示获得相邻加成，红色连线表示受到辐射削弱。',
+              '提示：青色连线为加成，红色连线为削弱；有加成的格位会高亮边框。',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF6F8198),
                   ),
@@ -207,9 +206,6 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                               if (!unlocked) {
                                 return;
                               }
-                              setState(() {
-                                _selectedIndex = index;
-                              });
                               if (_selectedId == null) {
                                 if (id != null) {
                                   controller.clearLayoutSlot(index);
@@ -231,11 +227,6 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                   ),
                 );
               },
-            ),
-            const SizedBox(height: 12),
-            _LayoutDetail(
-              state: state,
-              index: _selectedIndex,
             ),
           ],
         ),
@@ -266,85 +257,6 @@ class _BuildChip extends StatelessWidget {
       label: Text('$name (${available > 0 ? available : 0})'),
       selected: selected,
       onSelected: enabled ? onSelected : null,
-    );
-  }
-}
-
-class _LayoutDetail extends StatelessWidget {
-  const _LayoutDetail({
-    required this.state,
-    required this.index,
-  });
-
-  final GameState state;
-  final int? index;
-
-  @override
-  Widget build(BuildContext context) {
-    if (index == null || index! < 0 || index! >= state.layoutGrid.length) {
-      return Text(
-        '提示：点击布局格位可查看邻接效率明细。',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF6F8198),
-            ),
-      );
-    }
-    if (!state.isLayoutSlotUnlocked(index!)) {
-      return Text(
-        '该格位尚未解锁。',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF6F8198),
-            ),
-      );
-    }
-    final id = state.layoutGrid[index!];
-    if (id == null) {
-      return Text(
-        '该格位为空。',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF6F8198),
-            ),
-      );
-    }
-    final def = buildingById[id];
-    if (def == null) {
-      return const SizedBox.shrink();
-    }
-    final detail = _adjacencyDetail(state.layoutGrid, index!, def.type, state);
-    final bonusPercent = ((detail.bonus - 1) * 100).round();
-    final summary = bonusPercent == 0
-        ? '当前无邻接加成'
-        : (bonusPercent > 0 ? '当前加成 +$bonusPercent%' : '当前削弱 $bonusPercent%');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '格位：${def.name}',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          summary,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: bonusPercent >= 0
-                    ? const Color(0xFF8FA3BF)
-                    : const Color(0xFFFF9A9A),
-              ),
-        ),
-        if (detail.entries.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          for (final entry in detail.entries)
-            Text(
-              entry,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6F8198),
-                  ),
-            ),
-        ],
-      ],
     );
   }
 }
@@ -615,95 +527,4 @@ List<int> _neighborIndices(int index) {
     neighbors.add(index + 1);
   }
   return neighbors;
-}
-
-class _AdjacencyDetail {
-  const _AdjacencyDetail({
-    required this.bonus,
-    required this.entries,
-  });
-
-  final double bonus;
-  final List<String> entries;
-}
-
-_AdjacencyDetail _adjacencyDetail(
-  List<String?> layout,
-  int index,
-  BuildingType type,
-  GameState state,
-) {
-  final neighbors = _neighborIndices(index);
-  var bonus = 1.0;
-  final entries = <String>[];
-  var energyLinks = 0;
-  var shardLinks = 0;
-  var converterLinks = 0;
-  var radiationLinks = 0;
-
-  for (final n in neighbors) {
-    if (!state.isLayoutSlotUnlocked(n)) {
-      continue;
-    }
-    final neighborId = layout[n];
-    if (neighborId == null) {
-      continue;
-    }
-    if (neighborId == 'radiation_core' && type != BuildingType.energyProducer) {
-      radiationLinks += 1;
-      bonus -= 0.08;
-      continue;
-    }
-    final neighborDef = buildingById[neighborId];
-    if (neighborDef == null) {
-      continue;
-    }
-    switch (type) {
-      case BuildingType.shardProducer:
-        if (neighborDef.type == BuildingType.energyProducer) {
-          energyLinks += 1;
-          bonus += 0.2;
-        }
-        break;
-      case BuildingType.shardToPart:
-        if (neighborDef.type == BuildingType.shardProducer) {
-          shardLinks += 1;
-          bonus += 0.1;
-        }
-        break;
-      case BuildingType.partToBlueprint:
-        if (neighborDef.type == BuildingType.shardToPart) {
-          converterLinks += 1;
-          bonus += 0.1;
-        }
-        break;
-      case BuildingType.energyProducer:
-        if (neighborDef.type == BuildingType.shardProducer) {
-          shardLinks += 1;
-          bonus += 0.05;
-        }
-        break;
-    }
-  }
-
-  if (energyLinks > 0 && type == BuildingType.shardProducer) {
-    entries.add('相邻能量设施 x$energyLinks：采集 +${energyLinks * 20}%');
-  }
-  if (shardLinks > 0 && type == BuildingType.shardToPart) {
-    entries.add('相邻采集设施 x$shardLinks：转换 +${shardLinks * 10}%');
-  }
-  if (converterLinks > 0 && type == BuildingType.partToBlueprint) {
-    entries.add('相邻转换设施 x$converterLinks：合成 +${converterLinks * 10}%');
-  }
-  if (shardLinks > 0 && type == BuildingType.energyProducer) {
-    entries.add('相邻采集设施 x$shardLinks：能量 +${shardLinks * 5}%');
-  }
-  if (radiationLinks > 0) {
-    entries.add('辐射核心 x$radiationLinks：效率 -${radiationLinks * 8}%');
-  }
-
-  return _AdjacencyDetail(
-    bonus: bonus.clamp(0.5, 2.0),
-    entries: entries,
-  );
 }
