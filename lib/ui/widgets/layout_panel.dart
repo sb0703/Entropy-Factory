@@ -24,6 +24,8 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
     final controller = ref.read(gameControllerProvider.notifier);
     final placedCounts = _placedCounts(state.layoutGrid);
     final nextLayoutId = _nextLayoutResearchId(state);
+    final heavyFootprint =
+        state.runModifiers.contains('run_heavy_footprint');
 
     if (!state.isLayoutUnlocked) {
       final layoutResearch = researchById[layoutUnlockResearchId];
@@ -71,6 +73,21 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (heavyFootprint)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0x33FF6B6B),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFF6B6B)),
+                ),
+                child: Text(
+                  '本轮占地+1：最多可放置 ${state.layoutUnlockedCount ~/ 2} 个设施',
+                  style: const TextStyle(color: Color(0xFFFF6B6B)),
+                ),
+              ),
             Row(
               children: [
                 Text(

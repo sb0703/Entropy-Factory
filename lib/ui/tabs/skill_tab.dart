@@ -7,6 +7,7 @@ import '../../game/game_controller.dart';
 import '../../game/game_state.dart';
 import '../../game/number_format.dart';
 import '../../game/skill_definitions.dart';
+import '../../game/run_modifiers.dart';
 
 class SkillTab extends ConsumerStatefulWidget {
   const SkillTab({super.key});
@@ -168,10 +169,27 @@ class _SkillHeader extends StatelessWidget {
         state.resource(ResourceType.blueprint) >= skillPointCost;
     final gcdRemaining = controller.globalCooldownRemainingMs(state);
     final gcdReady = gcdRemaining <= 0;
+    final disableActives =
+        state.runModifiers.contains(runModifierDisableActives);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (disableActives)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: const Color(0x33FF6B6B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFF6B6B)),
+            ),
+            child: const Text(
+              '本轮禁用主动技能（变体效果）',
+              style: TextStyle(color: Color(0xFFFF6B6B)),
+            ),
+          ),
         Text(
           '技能树',
           style: Theme.of(
@@ -257,13 +275,21 @@ class _SkillHeader extends StatelessWidget {
                     ),
                     Switch(
                       value: state.autoCastEnabled,
-                      onChanged: controller.setAutoCastEnabled,
+                      onChanged:
+                          state.unlockedSkills.contains('skill_auto_cast') &&
+                                  !disableActives
+                              ? controller.setAutoCastEnabled
+                              : null,
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  state.autoCastEnabled ? '自动触发冷却结束的主动技能' : '关闭以手动触发主动技能',
+                  state.unlockedSkills.contains('skill_auto_cast')
+                      ? (state.autoCastEnabled
+                          ? '自动触发冷却结束的主动技能'
+                          : '关闭以手动触发主动技能')
+                      : '解锁技能树「自动化芯片」后可用',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF8FA3BF),
                   ),
@@ -272,13 +298,18 @@ class _SkillHeader extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: gcdReady
+                    onPressed: gcdReady &&
+                            state.unlockedSkills.contains('skill_global_burst')
                         ? controller.activateGlobalCooldownBurst
                         : null,
                     child: Text(
-                      gcdReady
-                          ? '全局释放'
-                          : '全局冷却 ${_formatDuration(gcdRemaining)}',
+                      !state.unlockedSkills.contains('skill_global_burst')
+                          ? '解锁技能树「能量过载」后可用'
+                          : disableActives
+                              ? '本轮禁用主动技能'
+                              : gcdReady
+                                  ? '全局释放'
+                                  : '全局冷却 ${_formatDuration(gcdRemaining)}',
                     ),
                   ),
                 ),

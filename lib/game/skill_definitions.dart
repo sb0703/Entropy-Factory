@@ -35,7 +35,7 @@ const List<SkillDefinition> skillDefinitions = [
   SkillDefinition(
     id: 'skill_time_warp',
     name: '时间扭曲',
-    description: '短时间内游戏速度翻倍。',
+    description: '短时间内提升游戏速度。',
     type: SkillType.active,
     icon: Icons.timelapse,
     costBlueprints: 20,
@@ -45,7 +45,7 @@ const List<SkillDefinition> skillDefinitions = [
   SkillDefinition(
     id: 'skill_overclock',
     name: '手动超频',
-    description: '短时间内转换与合成效率提升。',
+    description: '短时间内提高转化与合成效率。',
     type: SkillType.active,
     icon: Icons.flash_on,
     costBlueprints: 30,
@@ -56,7 +56,7 @@ const List<SkillDefinition> skillDefinitions = [
   SkillDefinition(
     id: 'skill_pulse',
     name: '资源脉冲',
-    description: '立刻获得一小段时间的碎片产出。',
+    description: '瞬时获得一段时间的碎片产出。',
     type: SkillType.active,
     icon: Icons.bolt,
     costBlueprints: 25,
@@ -65,7 +65,7 @@ const List<SkillDefinition> skillDefinitions = [
   ),
   SkillDefinition(
     id: 'skill_shard_boost',
-    name: '采集增幅',
+    name: '采集增强',
     description: '碎片产出 +15%。',
     type: SkillType.passive,
     icon: Icons.scatter_plot,
@@ -73,7 +73,7 @@ const List<SkillDefinition> skillDefinitions = [
   ),
   SkillDefinition(
     id: 'skill_conversion_boost',
-    name: '转化加速',
+    name: '转化强化',
     description: '碎片转化效率 +15%。',
     type: SkillType.passive,
     icon: Icons.compare_arrows,
@@ -82,8 +82,8 @@ const List<SkillDefinition> skillDefinitions = [
   ),
   SkillDefinition(
     id: 'skill_capacity_boost',
-    name: '通道扩容',
-    description: '转化设施产能 +20%。',
+    name: '管道扩容',
+    description: '转化产能 +20%。',
     type: SkillType.passive,
     icon: Icons.view_module,
     costSkillPoints: 1,
@@ -100,7 +100,7 @@ const List<SkillDefinition> skillDefinitions = [
   ),
   SkillDefinition(
     id: 'skill_energy_saver',
-    name: '能量节流',
+    name: '能耗回收',
     description: '合成能耗 -10%。',
     type: SkillType.passive,
     icon: Icons.battery_saver,
@@ -109,12 +109,30 @@ const List<SkillDefinition> skillDefinitions = [
   ),
   SkillDefinition(
     id: 'skill_cost_stabilizer',
-    name: '稳定增殖',
+    name: '成本平衡',
     description: '采集成本增长 -0.02。',
     type: SkillType.passive,
     icon: Icons.timeline,
     costSkillPoints: 2,
     prerequisites: ['skill_shard_boost'],
+  ),
+  SkillDefinition(
+    id: 'skill_auto_cast',
+    name: '自动化芯片',
+    description: '解锁自动施法：冷却结束后自动释放已装配的主动技能。',
+    type: SkillType.passive,
+    icon: Icons.autorenew,
+    costSkillPoints: 2,
+    prerequisites: ['skill_conversion_boost'],
+  ),
+  SkillDefinition(
+    id: 'skill_global_burst',
+    name: '能量过载',
+    description: '解锁全局冷却：一键释放全部主动技能，但进入更长的全局冷却时间。',
+    type: SkillType.passive,
+    icon: Icons.blur_circular,
+    costSkillPoints: 3,
+    prerequisites: ['skill_auto_cast'],
   ),
 ];
 
@@ -166,6 +184,8 @@ ResearchEffects computeSkillEffects(GameState state) {
         effects = effects.copyWith(
           shardCostGrowthOffset: effects.shardCostGrowthOffset - 0.02,
         );
+        break;
+      default:
         break;
     }
   }

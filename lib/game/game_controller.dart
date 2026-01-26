@@ -316,6 +316,9 @@ class GameController extends StateNotifier<GameState> {
   }
 
   void setAutoCastEnabled(bool value) {
+    if (!_simState.unlockedSkills.contains('skill_auto_cast')) {
+      return;
+    }
     _commitState(_simState.copyWith(autoCastEnabled: value));
   }
 
@@ -341,6 +344,15 @@ class GameController extends StateNotifier<GameState> {
     if (current != null) {
       placedCounts[current] = math.max(0, (placedCounts[current] ?? 1) - 1);
       layout[index] = null;
+    }
+    if (_simState.runModifiers.contains(runModifierHeavyFootprint) &&
+        current == null) {
+      final maxPlacements = _simState.layoutUnlockedCount ~/ 2;
+      final placedTotal = _placedCountInUnlocked(layout, _simState);
+      if (placedTotal >= maxPlacements) {
+        _commitState(_simState.copyWith(layoutGrid: layout));
+        return;
+      }
     }
     final totalOwned = _simState.buildingCount(buildingId);
     final used = placedCounts[buildingId] ?? 0;
@@ -402,6 +414,19 @@ class GameController extends StateNotifier<GameState> {
       counts[id] = (counts[id] ?? 0) + 1;
     }
     return counts;
+  }
+
+  int _placedCountInUnlocked(List<String?> layout, GameState state) {
+    var count = 0;
+    for (var i = 0; i < layout.length; i++) {
+      if (!state.isLayoutSlotUnlocked(i)) {
+        continue;
+      }
+      if (layout[i] != null) {
+        count++;
+      }
+    }
+    return count;
   }
 
   void buyResearch(String researchId) {
@@ -1038,6 +1063,9 @@ class GameController extends StateNotifier<GameState> {
   }
 
   void activateSkill(String skillId) {
+    if (_simState.runModifiers.contains(runModifierDisableActives)) {
+      return;
+    }
     if (_isGlobalCooldownActive(_simState, DateTime.now().millisecondsSinceEpoch)) {
       return;
     }
@@ -1060,6 +1088,12 @@ class GameController extends StateNotifier<GameState> {
 
   void activateGlobalCooldownBurst() {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (_simState.runModifiers.contains(runModifierDisableActives)) {
+      return;
+    }
+    if (!_simState.unlockedSkills.contains('skill_global_burst')) {
+      return;
+    }
     if (_isGlobalCooldownActive(_simState, nowMs)) {
       return;
     }
@@ -1152,6 +1186,9 @@ class GameController extends StateNotifier<GameState> {
 
   void _autoCastActiveSkills(int nowMs) {
     if (!_simState.autoCastEnabled) {
+      return;
+    }
+    if (_simState.runModifiers.contains(runModifierDisableActives)) {
       return;
     }
     if (_isGlobalCooldownActive(_simState, nowMs)) {

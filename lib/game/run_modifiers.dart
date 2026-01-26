@@ -21,11 +21,14 @@ class RunModifier {
   final ResearchEffects effects;
 }
 
+const String runModifierDisableActives = 'run_disable_actives';
+const String runModifierHeavyFootprint = 'run_heavy_footprint';
+
 const List<RunModifier> runModifiers = [
   RunModifier(
     id: 'run_shard_rush',
     title: '碎片奔涌',
-    description: '碎片产出 +40%，转换产能 -10%。',
+    description: '碎片产出 +40%，转化产能 -10%。',
     tier: RunModifierTier.chaos,
     effects: ResearchEffects(
       shardProductionMultiplier: 1.4,
@@ -39,7 +42,7 @@ const List<RunModifier> runModifiers = [
   RunModifier(
     id: 'run_blueprint_focus',
     title: '蓝图倾斜',
-    description: '蓝图产出 +30%，碎片转换效率 -10%。',
+    description: '蓝图产出 +30%，碎片转化效率 -10%。',
     tier: RunModifierTier.chaos,
     effects: ResearchEffects(
       shardProductionMultiplier: 1.0,
@@ -67,7 +70,7 @@ const List<RunModifier> runModifiers = [
   RunModifier(
     id: 'run_precision_forge',
     title: '精密锻造',
-    description: '碎片转换效率 +20%，蓝图产出 -10%。',
+    description: '碎片转化效率 +20%，蓝图产出 -10%。',
     tier: RunModifierTier.chaos,
     effects: ResearchEffects(
       shardProductionMultiplier: 1.0,
@@ -81,7 +84,7 @@ const List<RunModifier> runModifiers = [
   RunModifier(
     id: 'run_peak_output',
     title: '峰值输出',
-    description: '采集产出 +25%，转换产能 +15%。',
+    description: '采集产出 +25%，转化产能 +15%。',
     tier: RunModifierTier.positive,
     effects: ResearchEffects(
       shardProductionMultiplier: 1.25,
@@ -123,7 +126,7 @@ const List<RunModifier> runModifiers = [
   RunModifier(
     id: 'run_rust_pressure',
     title: '锈蚀压力',
-    description: '采集产出 -20%，转换效率 -10%。',
+    description: '采集产出 -20%，转化效率 -10%。',
     tier: RunModifierTier.negative,
     effects: ResearchEffects(
       shardProductionMultiplier: 0.8,
@@ -133,6 +136,20 @@ const List<RunModifier> runModifiers = [
       blueprintProductionMultiplier: 1.0,
       energyNeedMultiplier: 1.0,
     ),
+  ),
+  RunModifier(
+    id: runModifierDisableActives,
+    title: '主动封印',
+    description: '本轮不可使用主动技能。',
+    tier: RunModifierTier.negative,
+    effects: ResearchEffects.base,
+  ),
+  RunModifier(
+    id: runModifierHeavyFootprint,
+    title: '占地增幅',
+    description: '建筑占地 +1，同等格位可放置的设施更少。',
+    tier: RunModifierTier.negative,
+    effects: ResearchEffects.base,
   ),
 ];
 

@@ -7,8 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../game/game_controller.dart';
 import '../../game/game_state.dart';
 import '../../game/skill_definitions.dart';
+import '../../game/run_modifiers.dart';
 
-/// 技能快捷栏：仅以图标形式展示已装配的主动技能，支持冷却/持续进度环与点击施放。
+/// 技能快捷栏：仅以图标形式展示已装配的主动技能，支持长按/点击触发。
 class SkillQuickBar extends ConsumerWidget {
   const SkillQuickBar({super.key});
 
@@ -21,12 +22,29 @@ class SkillQuickBar extends ConsumerWidget {
       return const SizedBox.shrink();
     }
     final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final hasGlobalBurst = state.unlockedSkills.contains('skill_global_burst');
+    final disableActives = state.runModifiers.contains(runModifierDisableActives);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (disableActives)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: const Color(0x33FF6B6B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFF6B6B)),
+              ),
+              child: const Text(
+                '本轮禁用主动技能（变体效果）',
+                style: TextStyle(color: Color(0xFFFF6B6B)),
+              ),
+            ),
           Row(
             children: [
               Expanded(
@@ -49,16 +67,22 @@ class SkillQuickBar extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: controller.isGlobalCooldownActive(state)
+              onPressed: !hasGlobalBurst ||
+                      controller.isGlobalCooldownActive(state) ||
+                      disableActives
                   ? null
                   : () {
                       HapticFeedback.lightImpact();
                       controller.activateGlobalCooldownBurst();
                     },
               child: Text(
-                controller.isGlobalCooldownActive(state)
-                    ? '全局冷却 ${_formatDuration(controller.globalCooldownRemainingMs(state))}'
-                    : '全局释放',
+                !hasGlobalBurst
+                    ? '解锁技能树「能量过载」后可用'
+                    : disableActives
+                        ? '本轮禁用主动技能'
+                        : controller.isGlobalCooldownActive(state)
+                        ? '全局冷却 ${_formatDuration(controller.globalCooldownRemainingMs(state))}'
+                        : '全局释放',
               ),
             ),
           ),
@@ -115,8 +139,7 @@ class _SkillQuickButton extends StatelessWidget {
       child: Tooltip(
         message: '${skill.name}\n${_statusText(runtime)}',
         preferBelow: false,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(34),
+        child: GestureDetector(
           onTap: canUse ? () => controller.activateSkill(skill.id) : null,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -125,8 +148,8 @@ class _SkillQuickButton extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
-                    width: 52,
-                    height: 52,
+                    width: 44,
+                    height: 44,
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 4,
@@ -134,39 +157,17 @@ class _SkillQuickButton extends StatelessWidget {
                       color: ringColor,
                     ),
                   ),
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: const Color(0xFF142033),
-                    child: Icon(skill.icon, color: const Color(0xFF8FA3BF)),
-                  ),
-                  if (isActive || isCooling)
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: ringColor.withValues(
-                            alpha: ((ringColor.a * 255.0) * 0.92)
-                                .round()
-                                .clamp(0, 255)
-                                .toDouble(),
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _shortStatus(runtime),
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(color: Colors.black),
-                        ),
-                      ),
-                    ),
+                  Icon(skill.icon, color: const Color(0xFF8FA3BF)),
                 ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _statusText(runtime),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: ringColor,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -226,6 +227,16 @@ class _SkillQuickButton extends StatelessWidget {
     }
     return 0.0;
   }
+
+  String _statusText(_SkillRuntime runtime) {
+    if (runtime.activeRemainingMs > 0) {
+      return '持续 ${_formatDuration(runtime.activeRemainingMs)}';
+    }
+    if (runtime.cooldownRemainingMs > 0) {
+      return '冷却 ${_formatDuration(runtime.cooldownRemainingMs)}';
+    }
+    return '就绪';
+  }
 }
 
 class _SkillRuntime {
@@ -253,23 +264,4 @@ String _formatDuration(int ms) {
     return '$minutes:${remaining.toString().padLeft(2, '0')}';
   }
   return '${remaining}s';
-}
-
-String _shortStatus(_SkillRuntime runtime) {
-  final seconds = ((runtime.activeRemainingMs > 0
-              ? runtime.activeRemainingMs
-              : runtime.cooldownRemainingMs) /
-          1000)
-      .ceil();
-  return seconds > 0 ? '${seconds}s' : '';
-}
-
-String _statusText(_SkillRuntime runtime) {
-  if (runtime.activeRemainingMs > 0) {
-    return '持续 ${_formatDuration(runtime.activeRemainingMs)}';
-  }
-  if (runtime.cooldownRemainingMs > 0) {
-    return '冷却 ${_formatDuration(runtime.cooldownRemainingMs)}';
-  }
-  return '可用';
 }
