@@ -28,53 +28,82 @@ class _SkillTabState extends ConsumerState<SkillTab> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 900;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Column(
-            children: [
-              _SkillHeader(state: gameState, controller: controller),
-              const SizedBox(height: 12),
-              Expanded(
-                child: isWide
-                    ? Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: _SkillGrid(
-                              skills: skills,
-                              selectedId: selected?.id,
-                              onSelect: (def) {
-                                setState(() {
-                                  _selectedId = def.id;
-                                });
-                              },
-                              state: gameState,
+        final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+        final baseInset = bottomInset > 0 ? bottomInset : 16.0;
+        final bottomSpacerHeight = baseInset + 96.0;
+
+        if (isWide) {
+          return SafeArea(
+            bottom: true,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, baseInset),
+              child: Column(
+                children: [
+                  _SkillHeader(state: gameState, controller: controller),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: _SkillGrid(
+                            skills: skills,
+                            selectedId: selected?.id,
+                            contentPadding: EdgeInsets.only(
+                              bottom: bottomSpacerHeight,
                             ),
+                            onSelect: (def) {
+                              setState(() {
+                                _selectedId = def.id;
+                              });
+                            },
+                            state: gameState,
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: _SkillDetailPanel(
-                              skill: selected,
-                              state: gameState,
-                              controller: controller,
-                            ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 2,
+                          child: _SkillDetailPanel(
+                            skill: selected,
+                            state: gameState,
+                            controller: controller,
                           ),
-                        ],
-                      )
-                    : _SkillGrid(
-                        skills: skills,
-                        selectedId: selected?.id,
-                        onSelect: (def) {
-                          setState(() {
-                            _selectedId = def.id;
-                          });
-                          _showSkillDetailSheet(def);
-                        },
-                        state: gameState,
-                      ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
+          );
+        }
+
+        // 窄屏：整体可滚动，避免底部溢出
+        return SafeArea(
+          bottom: true,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, bottomSpacerHeight),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SkillHeader(state: gameState, controller: controller),
+                const SizedBox(height: 12),
+                _SkillGrid(
+                  skills: skills,
+                  selectedId: selected?.id,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  contentPadding: EdgeInsets.zero,
+                  onSelect: (def) {
+                    setState(() {
+                      _selectedId = def.id;
+                    });
+                    _showSkillDetailSheet(def);
+                  },
+                  state: gameState,
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -222,8 +251,8 @@ class _SkillHeader extends StatelessWidget {
                       child: Text(
                         '自动施放主动技能',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     Switch(
@@ -236,14 +265,16 @@ class _SkillHeader extends StatelessWidget {
                 Text(
                   state.autoCastEnabled ? '自动触发冷却结束的主动技能' : '关闭以手动触发主动技能',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF8FA3BF),
-                      ),
+                    color: const Color(0xFF8FA3BF),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: gcdReady ? controller.activateGlobalCooldownBurst : null,
+                    onPressed: gcdReady
+                        ? controller.activateGlobalCooldownBurst
+                        : null,
                     child: Text(
                       gcdReady
                           ? '全局释放'
@@ -291,14 +322,19 @@ class _SkillGrid extends StatelessWidget {
     required this.selectedId,
     required this.onSelect,
     required this.state,
+    required this.contentPadding,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   final List<SkillDefinition> skills;
   final String? selectedId;
   final ValueChanged<SkillDefinition> onSelect;
   final GameState state;
-
-  @override
+  final EdgeInsets contentPadding;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
+@override
   Widget build(BuildContext context) {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -307,6 +343,9 @@ class _SkillGrid extends StatelessWidget {
         crossAxisSpacing: 12,
         childAspectRatio: 1.25,
       ),
+      shrinkWrap: shrinkWrap,
+      physics: physics,
+      padding: (contentPadding).add(const EdgeInsets.all(8)),
       itemCount: skills.length,
       itemBuilder: (context, index) {
         final def = skills[index];
@@ -556,6 +595,7 @@ class _SkillDetailPanel extends StatelessWidget {
                         ? () {
                             HapticFeedback.lightImpact();
                             controller.toggleEquipSkill(def.id);
+                            onActionComplete?.call();
                           }
                         : null,
                     child: Text(isEquipped ? '卸下' : '装配'),

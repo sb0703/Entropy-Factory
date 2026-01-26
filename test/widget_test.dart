@@ -13,12 +13,11 @@ import 'package:flutter_game_test/main.dart';
 
 void main() {
   testWidgets('App loads core navigation', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: EntropyWorksApp()),
-    );
+    await tester.pumpWidget(const ProviderScope(child: EntropyWorksApp()));
 
     expect(find.text('生产'), findsOneWidget);
     expect(find.text('研究'), findsOneWidget);
+    expect(find.text('技能'), findsOneWidget);
     expect(find.text('升维'), findsOneWidget);
     expect(find.text('日志'), findsOneWidget);
   });

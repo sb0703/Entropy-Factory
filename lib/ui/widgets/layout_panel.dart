@@ -15,6 +15,8 @@ class LayoutPanel extends ConsumerStatefulWidget {
 
 class _LayoutPanelState extends ConsumerState<LayoutPanel> {
   String? _selectedId;
+  bool _editMode = true;
+  int? _draggingIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -31,30 +33,33 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '设施布局（未解锁）',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '解锁后可放置设施并获得邻接协同加成。',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF8FA3BF),
-                    ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                costText,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFFF5C542),
-                    ),
-              ),
-            ],
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '设施布局（未解锁）',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '解锁后可放置设施并获得邻接协同加成。',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF8FA3BF),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  costText,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFFF5C542),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -66,61 +71,93 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '设施布局',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+            Row(
+              children: [
+                Text(
+                  '设施布局',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                Text(
+                  '编辑模式',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF8FA3BF),
+                      ),
+                ),
+                Switch(
+                  value: _editMode,
+                  onChanged: (v) {
+                    setState(() {
+                      _editMode = v;
+                    });
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
               '相邻设施将触发协同加成。',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
             const SizedBox(height: 4),
             Text(
               '规则：采集邻接能量 +20%，转换邻接采集 +10%，合成邻接转换 +10%，能量邻接采集 +5%。',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6F8198),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF6F8198)),
             ),
             const SizedBox(height: 4),
             Text(
               '连线加成：采集←能量 +20%/条；能量←采集 +5%/条；转换←采集 +10%/条；合成←转换 +10%/条。',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6F8198),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF6F8198)),
             ),
             const SizedBox(height: 4),
             Text(
               '辐射削弱：辐射核心→周围 -8%/条（可叠加，最低保留 50%）。',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6F8198),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF6F8198)),
             ),
             const SizedBox(height: 4),
             Text(
               '提示：青色连线为加成，红色连线为削弱；有加成的格位会高亮边框。',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF6F8198)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _editMode
+                  ? '编辑模式开启：点击空位放置，点击已放置格可清除，长按可拖拽交换位置。'
+                  : '查看模式：无法调整布局，开启编辑模式后可操作。',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6F8198),
+                    color: const Color(0xFF8FA3BF),
                   ),
+            ),
+            const SizedBox(height: 6),
+            _AdjacencySummaryBlock(
+              summary: _layoutAdjacencySummary(state.layoutGrid, state),
             ),
             const SizedBox(height: 6),
             Text(
               '已解锁：${state.layoutUnlockedColumns}x${state.layoutUnlockedRows}（${state.layoutUnlockedCount} 格）',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
             ),
             if (nextLayoutId != null) ...[
               const SizedBox(height: 4),
               Text(
                 '下一阶段：${researchTitle(nextLayoutId)}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFFF5C542),
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: const Color(0xFFF5C542)),
               ),
             ],
             const SizedBox(height: 12),
@@ -132,7 +169,8 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                   _BuildChip(
                     id: def.id,
                     name: def.name,
-                    available: state.buildingCount(def.id) -
+                    available:
+                        state.buildingCount(def.id) -
                         (placedCounts[def.id] ?? 0),
                     selected: _selectedId == def.id,
                     onSelected: (selected) {
@@ -157,6 +195,17 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                   height: gridHeight,
                   child: Stack(
                     children: [
+                      if (_editMode)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: _GridPainter(
+                                cellSize: cellSize,
+                                spacing: spacing,
+                              ),
+                            ),
+                          ),
+                        ),
                       Positioned.fill(
                         child: IgnorePointer(
                           child: CustomPaint(
@@ -174,11 +223,11 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: layoutColumns,
-                          mainAxisSpacing: spacing,
-                          crossAxisSpacing: spacing,
-                          childAspectRatio: 1,
-                        ),
+                              crossAxisCount: layoutColumns,
+                              mainAxisSpacing: spacing,
+                              crossAxisSpacing: spacing,
+                              childAspectRatio: 1,
+                            ),
                         itemBuilder: (context, index) {
                           final unlocked = state.isLayoutSlotUnlocked(index);
                           final id = state.layoutGrid[index];
@@ -191,18 +240,21 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                                   def.type,
                                   state,
                                 );
-                final highlightTone = bonus == 1.0
-                    ? null
-                    : (bonus > 1.0
-                        ? const Color(0xFF5CE1E6)
-                        : const Color(0xFFFF6B6B));
-                          return _LayoutCell(
+                          final highlightTone = bonus == 1.0
+                              ? null
+                              : (bonus > 1.0
+                                    ? const Color(0xFF5CE1E6)
+                                    : const Color(0xFFFF6B6B));
+                          final cell = _LayoutCell(
                             label: unlocked ? (def?.name ?? '空位') : '锁定',
                             tone: _toneFor(def?.type),
                             occupied: def != null && unlocked,
                             locked: !unlocked,
-                            highlight: highlightTone,
+                            highlight: _draggingIndex == index
+                                ? const Color(0xFF5CE1E6)
+                                : highlightTone,
                             onTap: () {
+                              if (!_editMode) return;
                               if (!unlocked) {
                                 return;
                               }
@@ -217,9 +269,53 @@ class _LayoutPanelState extends ConsumerState<LayoutPanel> {
                                 index,
                               );
                             },
-                            onLongPress: unlocked
-                                ? () => controller.clearLayoutSlot(index)
-                                : () {},
+                            // 长按用于拖拽，清除由“未选中时点击已放置格”处理
+                            onLongPress: null,
+                          );
+
+                          if (!_editMode || !unlocked) {
+                            return cell;
+                          }
+
+                          return DragTarget<int>(
+                            onWillAcceptWithDetails: (details) {
+                              return details.data != index;
+                            },
+                            onAcceptWithDetails: (details) {
+                              controller.moveLayoutSlot(details.data, index);
+                              setState(() {
+                                _draggingIndex = null;
+                              });
+                            },
+                            builder: (context, candidate, rejected) {
+                              return LongPressDraggable<int>(
+                                data: index,
+                                feedback: Material(
+                                  color: Colors.transparent,
+                                  child: SizedBox(
+                                    width: cellSize,
+                                    height: cellSize,
+                                    child: cell,
+                                  ),
+                                ),
+                                onDragStarted: () {
+                                  setState(() {
+                                    _draggingIndex = index;
+                                  });
+                                },
+                                onDraggableCanceled: (_, __) {
+                                  setState(() {
+                                    _draggingIndex = null;
+                                  });
+                                },
+                                onDragEnd: (_) {
+                                  setState(() {
+                                    _draggingIndex = null;
+                                  });
+                                },
+                                child: cell,
+                              );
+                            },
                           );
                         },
                       ),
@@ -269,7 +365,7 @@ class _LayoutCell extends StatelessWidget {
     required this.locked,
     required this.highlight,
     required this.onTap,
-    required this.onLongPress,
+    this.onLongPress,
   });
 
   final String label;
@@ -278,7 +374,7 @@ class _LayoutCell extends StatelessWidget {
   final bool locked;
   final Color? highlight;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -292,9 +388,10 @@ class _LayoutCell extends StatelessWidget {
           border: Border.all(
             color: locked
                 ? const Color(0x221C2A3A)
-                : (highlight ?? (occupied
-                        ? tone.withAlpha(160)
-                        : const Color(0x331C2A3A))),
+                : (highlight ??
+                      (occupied
+                          ? tone.withAlpha(160)
+                          : const Color(0x331C2A3A))),
           ),
         ),
         child: Center(
@@ -302,10 +399,10 @@ class _LayoutCell extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: locked
-                      ? const Color(0xFF3F4A5C)
-                      : (occupied ? tone : const Color(0xFF8FA3BF)),
-                ),
+              color: locked
+                  ? const Color(0xFF3F4A5C)
+                  : (occupied ? tone : const Color(0xFF8FA3BF)),
+            ),
           ),
         ),
       ),
@@ -404,8 +501,9 @@ class _LayoutLinkPainter extends CustomPainter {
         if (linkType == null) {
           continue;
         }
-        final paint =
-            linkType == _LinkType.positive ? positivePaint : negativePaint;
+        final paint = linkType == _LinkType.positive
+            ? positivePaint
+            : negativePaint;
         final start = _cellCenter(index);
         final end = _cellCenter(neighbor);
         canvas.drawLine(start, end, paint);
@@ -527,4 +625,150 @@ List<int> _neighborIndices(int index) {
     neighbors.add(index + 1);
   }
   return neighbors;
+}
+
+class _GridPainter extends CustomPainter {
+  const _GridPainter({
+    required this.cellSize,
+    required this.spacing,
+  });
+
+  final double cellSize;
+  final double spacing;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x331C2A3A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (var row = 0; row < layoutRows; row++) {
+      for (var col = 0; col < layoutColumns; col++) {
+        final left = col * (cellSize + spacing);
+        final top = row * (cellSize + spacing);
+        final rect = Rect.fromLTWH(left, top, cellSize, cellSize);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect, const Radius.circular(12)),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridPainter oldDelegate) {
+    return oldDelegate.cellSize != cellSize ||
+        oldDelegate.spacing != spacing;
+  }
+}
+
+class _LayoutAdjacencySummary {
+  const _LayoutAdjacencySummary({
+    required this.energyLinks,
+    required this.collectionLinks,
+    required this.conversionLinks,
+    required this.radiationLinks,
+  });
+
+  final int energyLinks;
+  final int collectionLinks;
+  final int conversionLinks;
+  final int radiationLinks;
+}
+
+_LayoutAdjacencySummary _layoutAdjacencySummary(
+  List<String?> layout,
+  GameState state,
+) {
+  var energyLinks = 0;
+  var collectionLinks = 0;
+  var conversionLinks = 0;
+  var radiationLinks = 0;
+  for (var index = 0; index < layout.length; index++) {
+    if (!state.isLayoutSlotUnlocked(index)) {
+      continue;
+    }
+    final id = layout[index];
+    if (id == null) {
+      continue;
+    }
+    final def = buildingById[id];
+    if (def == null) {
+      continue;
+    }
+    for (final neighbor in _neighborIndices(index)) {
+      if (neighbor <= index) continue;
+      if (!state.isLayoutSlotUnlocked(neighbor)) continue;
+      final neighborId = layout[neighbor];
+      if (neighborId == null) continue;
+      if (neighborId == 'radiation_core' &&
+          def.type != BuildingType.energyProducer) {
+        radiationLinks += 1;
+        continue;
+      }
+      final neighborDef = buildingById[neighborId];
+      if (neighborDef == null) continue;
+      if (def.type == BuildingType.shardProducer &&
+          neighborDef.type == BuildingType.energyProducer) {
+        energyLinks += 1;
+      }
+      if (def.type == BuildingType.energyProducer &&
+          neighborDef.type == BuildingType.shardProducer) {
+        collectionLinks += 1;
+      }
+      if (def.type == BuildingType.shardToPart &&
+          neighborDef.type == BuildingType.shardProducer) {
+        collectionLinks += 1;
+      }
+      if (def.type == BuildingType.partToBlueprint &&
+          neighborDef.type == BuildingType.shardToPart) {
+        conversionLinks += 1;
+      }
+    }
+  }
+  return _LayoutAdjacencySummary(
+    energyLinks: energyLinks,
+    collectionLinks: collectionLinks,
+    conversionLinks: conversionLinks,
+    radiationLinks: radiationLinks,
+  );
+}
+
+class _AdjacencySummaryBlock extends StatelessWidget {
+  const _AdjacencySummaryBlock({required this.summary});
+
+  final _LayoutAdjacencySummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = <String>[];
+    if (summary.energyLinks > 0) {
+      chips.add('采集 +${summary.energyLinks * 20}%');
+    }
+    if (summary.collectionLinks > 0) {
+      chips.add('能量 +${summary.collectionLinks * 5}%');
+    }
+    if (summary.conversionLinks > 0) {
+      chips.add('合成 +${summary.conversionLinks * 10}%');
+    }
+    if (summary.radiationLinks > 0) {
+      chips.add('辐射 -${summary.radiationLinks * 8}%');
+    }
+    if (chips.isEmpty) {
+      chips.add('当前无邻接加成');
+    }
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: chips
+          .map(
+            (label) => Chip(
+              label: Text(label),
+              backgroundColor: const Color(0xFF0F1B2D),
+              side: const BorderSide(color: Color(0xFF22324A)),
+            ),
+          )
+          .toList(),
+    );
+  }
 }

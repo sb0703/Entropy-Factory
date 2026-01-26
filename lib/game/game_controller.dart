@@ -367,6 +367,32 @@ class GameController extends StateNotifier<GameState> {
     _commitState(_simState.copyWith(layoutGrid: layout));
   }
 
+  void moveLayoutSlot(int from, int to) {
+    if (!_simState.isLayoutUnlocked) {
+      return;
+    }
+    if (from < 0 ||
+        to < 0 ||
+        from >= _simState.layoutGrid.length ||
+        to >= _simState.layoutGrid.length) {
+      return;
+    }
+    if (!_simState.isLayoutSlotUnlocked(from) ||
+        !_simState.isLayoutSlotUnlocked(to)) {
+      return;
+    }
+    final layout = List<String?>.from(_simState.layoutGrid);
+    final fromVal = layout[from];
+    final toVal = layout[to];
+    // If nothing to move, skip.
+    if (fromVal == null && toVal == null) {
+      return;
+    }
+    layout[from] = toVal;
+    layout[to] = fromVal;
+    _commitState(_simState.copyWith(layoutGrid: layout));
+  }
+
   Map<String, int> _placedCounts(List<String?> layout) {
     final counts = <String, int>{};
     for (final id in layout) {

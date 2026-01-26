@@ -8,6 +8,7 @@ import '../../game/game_controller.dart';
 import '../../game/game_state.dart';
 import '../../game/skill_definitions.dart';
 
+/// 技能快捷栏：仅以图标形式展示已装配的主动技能，支持冷却/持续进度环与点击施放。
 class SkillQuickBar extends ConsumerWidget {
   const SkillQuickBar({super.key});
 
@@ -68,7 +69,7 @@ class SkillQuickBar extends ConsumerWidget {
               children: [
                 for (final skill in skills)
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: 10),
                     child: _SkillQuickButton(
                       skill: skill,
                       state: state,
@@ -105,17 +106,18 @@ class _SkillQuickButton extends StatelessWidget {
     final isCooling = runtime.cooldownRemainingMs > 0 && !isActive;
     final canUse = !isActive && !isCooling;
     final progress = _progressValue(runtime);
-    final status = isActive
-        ? '持续 ${_formatDuration(runtime.activeRemainingMs)}'
-        : (isCooling
-            ? '冷却 ${_formatDuration(runtime.cooldownRemainingMs)}'
-            : '就绪');
+    final ringColor = isActive
+        ? const Color(0xFF5CE1E6)
+        : (isCooling ? const Color(0xFFF5C542) : const Color(0xFF8BE4B4));
 
     return SizedBox(
-      width: 140,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 68,
+      child: Tooltip(
+        message: '${skill.name}\n${_statusText(runtime)}',
+        preferBelow: false,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(34),
+          onTap: canUse ? () => controller.activateSkill(skill.id) : null,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -123,53 +125,48 @@ class _SkillQuickButton extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
-                    width: 38,
-                    height: 38,
+                    width: 52,
+                    height: 52,
                     child: CircularProgressIndicator(
                       value: progress,
-                      strokeWidth: 3,
+                      strokeWidth: 4,
                       backgroundColor: const Color(0xFF1E2A3D),
-                      color: isActive
-                          ? const Color(0xFF5CE1E6)
-                          : (isCooling
-                              ? const Color(0xFFF5C542)
-                              : const Color(0xFF8BE4B4)),
+                      color: ringColor,
                     ),
                   ),
-                  Icon(skill.icon, color: const Color(0xFF8FA3BF)),
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: const Color(0xFF142033),
+                    child: Icon(skill.icon, color: const Color(0xFF8FA3BF)),
+                  ),
+                  if (isActive || isCooling)
+                    Positioned(
+                      bottom: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ringColor.withValues(
+                            alpha: ((ringColor.a * 255.0) * 0.92)
+                                .round()
+                                .clamp(0, 255)
+                                .toDouble(),
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _shortStatus(runtime),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(color: Colors.black),
+                        ),
+                      ),
+                    ),
                 ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                skill.name,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                status,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: isActive
-                          ? const Color(0xFF5CE1E6)
-                          : (isCooling
-                              ? const Color(0xFFF5C542)
-                              : const Color(0xFF8BE4B4)),
-                    ),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: canUse
-                      ? () {
-                          HapticFeedback.lightImpact();
-                          controller.activateSkill(skill.id);
-                        }
-                      : null,
-                  child: const Text('启用'),
-                ),
               ),
             ],
           ),
@@ -256,4 +253,23 @@ String _formatDuration(int ms) {
     return '$minutes:${remaining.toString().padLeft(2, '0')}';
   }
   return '${remaining}s';
+}
+
+String _shortStatus(_SkillRuntime runtime) {
+  final seconds = ((runtime.activeRemainingMs > 0
+              ? runtime.activeRemainingMs
+              : runtime.cooldownRemainingMs) /
+          1000)
+      .ceil();
+  return seconds > 0 ? '${seconds}s' : '';
+}
+
+String _statusText(_SkillRuntime runtime) {
+  if (runtime.activeRemainingMs > 0) {
+    return '持续 ${_formatDuration(runtime.activeRemainingMs)}';
+  }
+  if (runtime.cooldownRemainingMs > 0) {
+    return '冷却 ${_formatDuration(runtime.cooldownRemainingMs)}';
+  }
+  return '可用';
 }
