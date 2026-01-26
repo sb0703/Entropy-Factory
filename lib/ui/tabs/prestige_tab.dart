@@ -42,62 +42,65 @@ class PrestigeTab extends ConsumerWidget {
           ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8FA3BF)),
         ),
         const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '升维预估',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+        SizedBox(
+          width: double.infinity,
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '升维预估',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '当前定律',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: const Color(0xFF8FA3BF),
+                  const SizedBox(height: 12),
+                  Text(
+                    '当前定律',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _formatNumber(laws),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '预计获得常数',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: const Color(0xFF8FA3BF),
+                  const SizedBox(height: 6),
+                  Text(
+                    _formatNumber(laws),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _formatNumber(preview),
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.secondary,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 12),
+                  Text(
+                    '预计获得常数',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '常数 = 向下取整(√定律 × ${constantFactor.toStringAsFixed(0)})',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
+                  const SizedBox(height: 6),
+                  Text(
+                    _formatNumber(preview),
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '每 ${lawThreshold.toStringAsFixed(0)} 蓝图自动转化为 1 定律',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8FA3BF),
+                  const SizedBox(height: 12),
+                  Text(
+                    '常数 = 向下取整(√定律 × ${constantFactor.toStringAsFixed(0)})',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    '每 ${lawThreshold.toStringAsFixed(0)} 蓝图自动转化为 1 定律',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF8FA3BF),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -684,6 +687,7 @@ class _UnlockTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
