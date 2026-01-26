@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:math' as math;
 
 import '../../game/big_number.dart';
 import '../../game/constant_upgrades.dart';
@@ -9,6 +10,7 @@ import '../../game/game_state.dart';
 import '../../game/number_format.dart';
 import '../../game/prestige_challenges.dart';
 import '../../game/prestige_rules.dart';
+import '../effects/black_hole_effect.dart';
 
 class PrestigeTab extends ConsumerWidget {
   const PrestigeTab({super.key});
@@ -499,139 +501,118 @@ Future<void> _playPrestigeTransitionOverlay(BuildContext context) async {
     barrierColor: const Color(0xCC050B12),
     transitionDuration: const Duration(milliseconds: 650),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return _PrestigeTransition(animation: animation);
+      return const _PrestigeTransition();
     },
   );
 }
 
 class _PrestigeTransition extends StatefulWidget {
-  const _PrestigeTransition({required this.animation});
-
-  final Animation<double> animation;
+  const _PrestigeTransition();
 
   @override
   State<_PrestigeTransition> createState() => _PrestigeTransitionState();
 }
 
-class _PrestigeTransitionState extends State<_PrestigeTransition> {
+class _PrestigeTransitionState extends State<_PrestigeTransition>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  final List<Star> _stars = [];
+  final int _starCount = 300;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 650), () {
-      if (mounted) {
+    _initStars();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 10),
+    )..repeat();
+
+    Future.delayed(const Duration(milliseconds: 4000), () {
+      if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
     });
   }
 
+  void _initStars() {
+    _stars.clear();
+    final random = math.Random();
+    for (var i = 0; i < _starCount; i++) {
+      _stars.add(Star(random: random));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final curved = CurvedAnimation(
-      parent: widget.animation,
-      curve: Curves.easeOutCubic,
-    );
-    final glowOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(curved);
-    final warpScale = Tween<double>(begin: 0.92, end: 1.06).animate(curved);
-    final warpRotation = Tween<double>(begin: -0.06, end: 0.06).animate(curved);
-    final shimmerScale = Tween<double>(begin: 0.6, end: 1.4).animate(curved);
-
-    return Material(
-      color: Colors.transparent,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: curved,
-              builder: (context, child) {
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.center,
-                      radius: 1.1,
-                      colors: [
-                        Color.lerp(
-                          const Color(0xFF1B2B4B),
-                          const Color(0xFF0B0F16),
-                          curved.value,
-                        )!,
-                        const Color(0xFF04070D),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Center(
-            child: AnimatedBuilder(
-              animation: curved,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: warpScale.value,
-                  child: Transform.rotate(
-                    angle: warpRotation.value,
-                    child: child,
-                  ),
-                );
-              },
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        // 1. 在最外层设置黑色背景
+        return Container(
+          color: Colors.black,
+          child: SizedBox.expand(
+            child: CustomPaint(
+              painter: BlackHolePainter(
+                stars: _stars,
+                animationValue: _controller.value,
+                isDevouring: true,
+              ),
+              // 2. 这里的 child 只需要负责布局文字，不要设置背景色
               child: Container(
-                width: 220,
-                height: 220,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [Color(0xFF5CE1E6), Color(0x00243B5A)],
-                  ),
+                // color: Colors.black, // <--- 【关键】删掉这一行，或者改为 Colors.transparent
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 它的作用是把下面的文字往下挤，给 Painter 画的黑洞腾出空间
+                    // 高度建议比 painter 里的半径大一点 (painter里半径是32)
+                    const SizedBox(height: 80),
+                    const SizedBox(height: 16),
+                    // 主标题：升维中
+                    Text(
+                      '升  维  中', // 手动加空格或者靠 letterSpacing
+                      style: TextStyle(
+                        color: Colors.white.withValues(
+                          alpha: .9,
+                        ), // 不要纯白，稍微透一点背景色
+                        fontSize: 24, // 稍微大一点
+                        fontWeight: FontWeight.w200, // 【关键】极细字体，显得高级
+                        letterSpacing: 12.0, // 【关键】巨大的字间距，营造呼吸感
+                        shadows: [
+                          Shadow(
+                            color: Colors.cyanAccent.withValues(alpha: .5),
+                            blurRadius: 10,
+                          ), // 淡淡的辉光
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 副标题：改成英文或数据流，显得更像系统提示，而不是解说
+                    Text(
+                      'DIMENSION ASCENSION // SYSTEM REBOOT',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .4), // 很淡，作为装饰
+                        fontSize: 10,
+                        fontFamily: 'Courier', // 【关键】使用等宽字体(代码风)，像终端输出
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          Center(
-            child: FadeTransition(
-              opacity: glowOpacity,
-              child: Transform.scale(
-                scale: shimmerScale.value,
-                child: Container(
-                  width: 140,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFF5C542).withAlpha(180),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Center(
-            child: FadeTransition(
-              opacity: glowOpacity,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '升维中…',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      letterSpacing: 2,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '空间扭曲 · 逻辑重组',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFFB4C0D3),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
