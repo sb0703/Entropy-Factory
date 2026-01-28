@@ -130,24 +130,168 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _showOfflineGainDialog(String detail) async {
-    if (!mounted) {
-      return;
-    }
-    final formatted = detail.replaceAll('，', '\n');
+    if (!mounted) return;
+
+    // 1. 数据预处理：把长字符串切分成列表
+    // 假设你的 detail 是类似 "金币 +100，经验 +200" 这样的格式
+    // 我们先用 '，' 或 '\n' 切割，过滤掉空行
+    final List<String> lines = detail
+        .replaceAll('，', '\n') // 统一换行符
+        .split('\n')
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+
     await showDialog<void>(
       context: context,
+      barrierDismissible: false, // 强迫点击按钮才能关闭，防止误触
       builder: (context) {
-        return AlertDialog(
-          title: const Text('离线收益'),
-          content: SingleChildScrollView(child: Text('本次离线期间获得：\n$formatted')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('知道了'),
+        return Dialog(
+          backgroundColor: Colors.transparent, // 背景透明，方便自定义形状
+          insetPadding: const EdgeInsets.all(20),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              // 深色科技风背景
+              color: const Color(0xFF0F1B2D),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF22324A), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF5CE1E6).withValues(alpha: 0.15),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                ),
+              ],
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- 顶部标题栏 ---
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1B2B4B),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(15),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.bolt,
+                        color: Color(0xFFF5C542),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '系统重连 · 离线结算',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: const Color(0xFFF5C542),
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // --- 中间内容列表 ---
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '监测到休眠期间产生的资源堆积：',
+                          style: TextStyle(
+                            color: const Color(0xFF8FA3BF),
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // 动态生成资源列表
+                        ...lines.map((line) => _buildGainRow(context, line)),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // --- 底部按钮 ---
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5CE1E6),
+                        foregroundColor: const Color(0xFF071018),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        '确认接收',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
+    );
+  }
+
+  // 辅助方法：构建每一行资源
+  Widget _buildGainRow(BuildContext context, String text) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF142236),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          // 小圆点装饰
+          Container(
+            width: 4,
+            height: 4,
+            decoration: const BoxDecoration(
+              color: Color(0xFF5CE1E6),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 文本内容
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFFE6EDF7),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

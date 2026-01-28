@@ -1,4 +1,5 @@
-﻿import 'dart:async';
+
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,9 @@ import 'research_definitions.dart';
 import 'run_modifiers.dart';
 import 'skill_definitions.dart';
 import '../services/save_service.dart';
+
+part 'game_controller_layout.dart';
+part 'game_controller_skill.dart';
 
 class GameController extends StateNotifier<GameState> {
   static const int _timeWarpDurationMs = 30000;
@@ -231,13 +235,13 @@ class GameController extends StateNotifier<GameState> {
 
     final parts = <String>[];
     if (gainedShard > BigNumber.zero) {
-      parts.add('碎片 +${_formatNumber(gainedShard)}');
+      parts.add('��Ƭ +${_formatNumber(gainedShard)}');
     }
     if (gainedPart > BigNumber.zero) {
-      parts.add('零件 +${_formatNumber(gainedPart)}');
+      parts.add('��� +${_formatNumber(gainedPart)}');
     }
     if (gainedBlueprint > BigNumber.zero) {
-      parts.add('蓝图 +${_formatNumber(gainedBlueprint)}');
+      parts.add('��ͼ +${_formatNumber(gainedBlueprint)}');
     }
 
     if (parts.isEmpty) {
@@ -245,8 +249,8 @@ class GameController extends StateNotifier<GameState> {
     }
 
     final duration = _formatOfflineDuration(offlineSeconds);
-    final detail = '离线时长 $duration，按产能公式结算：${parts.join('，')}';
-    _commitState(_simState.addLogEntry('离线收益', detail));
+    final detail = '����ʱ�� $duration�������ܹ�ʽ���㣺${parts.join('��')}';
+    _commitState(_simState.addLogEntry('��������', detail));
   }
 
   void _commitState(GameState next) {
@@ -322,112 +326,6 @@ class GameController extends StateNotifier<GameState> {
     _commitState(_simState.copyWith(autoCastEnabled: value));
   }
 
-  void placeBuildingInLayout(String buildingId, int index) {
-    if (!_simState.isLayoutUnlocked) {
-      return;
-    }
-    if (index < 0 || index >= _simState.layoutGrid.length) {
-      return;
-    }
-    if (!_simState.isLayoutSlotUnlocked(index)) {
-      return;
-    }
-    if (!buildingById.containsKey(buildingId)) {
-      return;
-    }
-    final layout = List<String?>.from(_simState.layoutGrid);
-    final placedCounts = _placedCounts(layout);
-    final current = layout[index];
-    if (current == buildingId) {
-      return;
-    }
-    if (current != null) {
-      placedCounts[current] = math.max(0, (placedCounts[current] ?? 1) - 1);
-      layout[index] = null;
-    }
-    if (_simState.runModifiers.contains(runModifierHeavyFootprint) &&
-        current == null) {
-      final maxPlacements = _simState.layoutUnlockedCount ~/ 2;
-      final placedTotal = _placedCountInUnlocked(layout, _simState);
-      if (placedTotal >= maxPlacements) {
-        _commitState(_simState.copyWith(layoutGrid: layout));
-        return;
-      }
-    }
-    final totalOwned = _simState.buildingCount(buildingId);
-    final used = placedCounts[buildingId] ?? 0;
-    if (totalOwned - used <= 0) {
-      _commitState(_simState.copyWith(layoutGrid: layout));
-      return;
-    }
-    layout[index] = buildingId;
-    _commitState(_simState.copyWith(layoutGrid: layout));
-  }
-
-  void clearLayoutSlot(int index) {
-    if (!_simState.isLayoutUnlocked) {
-      return;
-    }
-    if (index < 0 || index >= _simState.layoutGrid.length) {
-      return;
-    }
-    if (!_simState.isLayoutSlotUnlocked(index)) {
-      return;
-    }
-    final layout = List<String?>.from(_simState.layoutGrid);
-    layout[index] = null;
-    _commitState(_simState.copyWith(layoutGrid: layout));
-  }
-
-  void moveLayoutSlot(int from, int to) {
-    if (!_simState.isLayoutUnlocked) {
-      return;
-    }
-    if (from < 0 ||
-        to < 0 ||
-        from >= _simState.layoutGrid.length ||
-        to >= _simState.layoutGrid.length) {
-      return;
-    }
-    if (!_simState.isLayoutSlotUnlocked(from) ||
-        !_simState.isLayoutSlotUnlocked(to)) {
-      return;
-    }
-    final layout = List<String?>.from(_simState.layoutGrid);
-    final fromVal = layout[from];
-    final toVal = layout[to];
-    // If nothing to move, skip.
-    if (fromVal == null && toVal == null) {
-      return;
-    }
-    layout[from] = toVal;
-    layout[to] = fromVal;
-    _commitState(_simState.copyWith(layoutGrid: layout));
-  }
-
-  Map<String, int> _placedCounts(List<String?> layout) {
-    final counts = <String, int>{};
-    for (final id in layout) {
-      if (id == null) {
-        continue;
-      }
-      counts[id] = (counts[id] ?? 0) + 1;
-    }
-    return counts;
-  }
-
-  int _placedCountInUnlocked(List<String?> layout, GameState state) {
-    var count = 0;
-    for (var i = 0; i < layout.length; i++) {
-      if (!state.isLayoutSlotUnlocked(i)) {
-        continue;
-      }
-      if (layout[i] != null) {
-        count++;
-      }
-    }
-    return count;
-  }
 
   void buyResearch(String researchId) {
     final def = researchById[researchId];
@@ -457,7 +355,7 @@ class GameController extends StateNotifier<GameState> {
       ),
     );
 
-    _commitState(_simState.addLogEntry('研究完成', '已解锁 ${researchTitle(def.id)}'));
+    _commitState(_simState.addLogEntry('�о����', '�ѽ��� ${researchTitle(def.id)}'));
   }
 
   void buyConstantUpgrade(String upgradeId) {
@@ -490,7 +388,7 @@ class GameController extends StateNotifier<GameState> {
       ),
     );
 
-    _commitState(_simState.addLogEntry('常数强化', '${def.name} +1'));
+    _commitState(_simState.addLogEntry('����ǿ��', '${def.name} +1'));
   }
 
   void startChallenge(String challengeId) {
@@ -532,7 +430,7 @@ class GameController extends StateNotifier<GameState> {
       equippedSkills: [..._simState.equippedSkills],
       pulseCooldownEndsAtMs: 0,
     );
-    _commitState(nextState.addLogEntry('挑战升维', '进入挑战：${challenge.title}'));
+    _commitState(nextState.addLogEntry('��ս��ά', '������ս��${challenge.title}'));
   }
 
   void abandonChallenge() {
@@ -558,7 +456,7 @@ class GameController extends StateNotifier<GameState> {
       equippedSkills: [..._simState.equippedSkills],
       pulseCooldownEndsAtMs: 0,
     );
-    _commitState(nextState.addLogEntry('挑战升维', '已放弃当前挑战'));
+    _commitState(nextState.addLogEntry('��ս��ά', '�ѷ�����ǰ��ս'));
   }
 
   void activateTimeWarp() {
@@ -574,7 +472,7 @@ class GameController extends StateNotifier<GameState> {
         timeWarpCooldownEndsAtMs: nowMs + cooldownMs,
       ),
     );
-    _commitState(_simState.addLogEntry('主动技能', '时间扭曲启动'));
+    _commitState(_simState.addLogEntry('��������', 'ʱ��Ť����'));
   }
 
   void activateOverclock() {
@@ -590,7 +488,7 @@ class GameController extends StateNotifier<GameState> {
         overclockCooldownEndsAtMs: nowMs + cooldownMs,
       ),
     );
-    _commitState(_simState.addLogEntry('主动技能', '手动超频启动'));
+    _commitState(_simState.addLogEntry('��������', '�ֶ���Ƶ��'));
   }
 
   int overclockDurationMs(GameState state) {
@@ -635,7 +533,7 @@ class GameController extends StateNotifier<GameState> {
         overclockLevel: level + 1,
       ),
     );
-    _commitState(_simState.addLogEntry('技能强化', '手动超频 Lv.${level + 1}'));
+    _commitState(_simState.addLogEntry('����ǿ��', '�ֶ���Ƶ Lv.${level + 1}'));
   }
 
   int timeWarpDurationMs(GameState state) {
@@ -676,7 +574,7 @@ class GameController extends StateNotifier<GameState> {
         timeWarpLevel: level + 1,
       ),
     );
-    _commitState(_simState.addLogEntry('技能强化', '时间扭曲 Lv.${level + 1}'));
+    _commitState(_simState.addLogEntry('����ǿ��', 'ʱ��Ť�� Lv.${level + 1}'));
   }
 
   String exportSave() {
@@ -688,7 +586,7 @@ class GameController extends StateNotifier<GameState> {
     if (imported == null) {
       return false;
     }
-    _commitState(imported.addLogEntry('存档导入', '已载入存档'));
+    _commitState(imported.addLogEntry('�浵����', '������浵'));
     await _saveService.saveState(_simState);
     return true;
   }
@@ -739,13 +637,13 @@ class GameController extends StateNotifier<GameState> {
       },
     );
     for (final def in newly) {
-      next = next.addLogEntry('里程碑达成', '${def.title}，${def.description}');
+      next = next.addLogEntry('��̱����', '${def.title}��${def.description}');
     }
     return next;
   }
 
   void _simulateOffline(double seconds) {
-    // 离线收益按公式一次性结算，避免逐秒循环造成卡顿。
+    // �������水��ʽһ���Խ��㣬��������ѭ����ɿ��١�
     final effects = _currentEffects(_simState);
     final constants = _currentConstants(_simState);
     final effectiveSeconds = math.max(0.0, seconds) * constants.speedMultiplier;
@@ -894,7 +792,7 @@ class GameController extends StateNotifier<GameState> {
       pulseCooldownEndsAtMs: 0,
     );
     _commitState(
-      nextState.addLogEntry('升维完成', '获得常数 +${_formatNumber(gain)}'),
+      nextState.addLogEntry('��ά���', '��ó��� +${_formatNumber(gain)}'),
     );
   }
 
@@ -963,7 +861,7 @@ class GameController extends StateNotifier<GameState> {
         runRerollsLeft: _simState.runRerollsLeft - 1,
       ),
     );
-    _commitState(_simState.addLogEntry('变体刷新', '刷新本轮变体词条'));
+    _commitState(_simState.addLogEntry('����ˢ��', 'ˢ�±��ֱ������'));
   }
 
   int maxSkillSlots(GameState state) {
@@ -1062,153 +960,6 @@ class GameController extends StateNotifier<GameState> {
     _commitState(_simState.copyWith(equippedSkills: equipped));
   }
 
-  void activateSkill(String skillId) {
-    if (_simState.runModifiers.contains(runModifierDisableActives)) {
-      return;
-    }
-    if (_isGlobalCooldownActive(_simState, DateTime.now().millisecondsSinceEpoch)) {
-      return;
-    }
-    if (!_simState.equippedSkills.contains(skillId)) {
-      return;
-    }
-    _activateSkillInternal(skillId, DateTime.now().millisecondsSinceEpoch);
-  }
-
-  bool isGlobalCooldownActive(GameState state) {
-    return _isGlobalCooldownActive(state, DateTime.now().millisecondsSinceEpoch);
-  }
-
-  int globalCooldownRemainingMs(GameState state) {
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    return math.max(0, state.globalCooldownEndsAtMs - nowMs);
-  }
-
-  int globalCooldownMs() => _globalCooldownMs;
-
-  void activateGlobalCooldownBurst() {
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    if (_simState.runModifiers.contains(runModifierDisableActives)) {
-      return;
-    }
-    if (!_simState.unlockedSkills.contains('skill_global_burst')) {
-      return;
-    }
-    if (_isGlobalCooldownActive(_simState, nowMs)) {
-      return;
-    }
-    final activeSkills = equippedActiveSkills(_simState);
-    if (activeSkills.isEmpty) {
-      return;
-    }
-    var triggered = false;
-    for (final skill in activeSkills) {
-      triggered = _activateSkillInternal(skill.id, nowMs) || triggered;
-    }
-    if (!triggered) {
-      return;
-    }
-    _commitState(
-      _simState.copyWith(globalCooldownEndsAtMs: nowMs + _globalCooldownMs),
-    );
-    _commitState(_simState.addLogEntry('全局冷却', '触发全局释放，进入冷却'));
-  }
-
-  bool _activateSkillInternal(String skillId, int nowMs) {
-    if (!_simState.equippedSkills.contains(skillId)) {
-      return false;
-    }
-    switch (skillId) {
-      case 'skill_time_warp':
-        return _activateTimeWarpInternal(nowMs);
-      case 'skill_overclock':
-        return _activateOverclockInternal(nowMs);
-      case 'skill_pulse':
-        return _activatePulseInternal(nowMs);
-    }
-    return false;
-  }
-
-  bool _activateTimeWarpInternal(int nowMs) {
-    if (nowMs < _simState.timeWarpCooldownEndsAtMs) {
-      return false;
-    }
-    final durationMs = timeWarpDurationMs(_simState);
-    final cooldownMs = timeWarpCooldownMs(_simState);
-    _commitState(
-      _simState.copyWith(
-        timeWarpEndsAtMs: nowMs + durationMs,
-        timeWarpCooldownEndsAtMs: nowMs + cooldownMs,
-      ),
-    );
-    _commitState(_simState.addLogEntry('主动技能', '时间扭曲启动'));
-    return true;
-  }
-
-  bool _activateOverclockInternal(int nowMs) {
-    if (nowMs < _simState.overclockCooldownEndsAtMs) {
-      return false;
-    }
-    final durationMs = overclockDurationMs(_simState);
-    final cooldownMs = overclockCooldownMs(_simState);
-    _commitState(
-      _simState.copyWith(
-        overclockEndsAtMs: nowMs + durationMs,
-        overclockCooldownEndsAtMs: nowMs + cooldownMs,
-      ),
-    );
-    _commitState(_simState.addLogEntry('主动技能', '手动超频启动'));
-    return true;
-  }
-
-  bool _activatePulseInternal(int nowMs) {
-    if (nowMs < _simState.pulseCooldownEndsAtMs) {
-      return false;
-    }
-    final effects = _currentEffects(_simState);
-    final constants = _currentConstants(_simState);
-    final shardGain = shardProductionPerSec(_simState, effects) *
-        constants.productionMultiplier * 10;
-    final nextShards = _simState.resource(ResourceType.shard) +
-        BigNumber.fromDouble(shardGain);
-    _commitState(
-      _simState.copyWith(
-        resources: {
-          ..._simState.resources,
-          ResourceType.shard: nextShards,
-        },
-        pulseCooldownEndsAtMs: nowMs + _pulseCooldownMs,
-      ),
-    );
-    _commitState(_simState.addLogEntry('主动技能', '资源脉冲启动'));
-    return true;
-  }
-
-  void _autoCastActiveSkills(int nowMs) {
-    if (!_simState.autoCastEnabled) {
-      return;
-    }
-    if (_simState.runModifiers.contains(runModifierDisableActives)) {
-      return;
-    }
-    if (_isGlobalCooldownActive(_simState, nowMs)) {
-      return;
-    }
-    if (nowMs - _lastAutoCastMs < _autoCastIntervalMs) {
-      return;
-    }
-    var triggered = false;
-    for (final skill in equippedActiveSkills(_simState)) {
-      triggered = _activateSkillInternal(skill.id, nowMs) || triggered;
-    }
-    if (triggered) {
-      _lastAutoCastMs = nowMs;
-    }
-  }
-
-  bool _isGlobalCooldownActive(GameState state, int nowMs) {
-    return state.globalCooldownEndsAtMs > nowMs;
-  }
 }
 
 final gameControllerProvider = StateNotifierProvider<GameController, GameState>(
@@ -1228,12 +979,12 @@ String _formatOfflineDuration(double seconds) {
   final hours = totalSeconds ~/ 3600;
   final minutes = (totalSeconds % 3600) ~/ 60;
   if (hours > 0) {
-    return '$hours 小时 $minutes 分钟';
+    return '$hours Сʱ $minutes ����';
   }
   if (minutes > 0) {
-    return '$minutes 分钟';
+    return '$minutes ����';
   }
-  return '${math.max(1, totalSeconds)} 秒';
+  return '${math.max(1, totalSeconds)} ��';
 }
 
 
