@@ -241,7 +241,8 @@ final gameUiProvider = Provider<GameUiState>((ref) {
   final effects = computeResearchEffects(state)
       .combine(computeMilestoneEffects(state))
       .combine(computeSynergyEffects(state))
-      .combine(computeRunModifierEffects(state));
+      .combine(computeRunModifierEffects(state))
+      .combine(computeEventEffects(state));
   final constants = computeConstantEffects(state);
   final rates = GameRates.fromState(state, effects, constants);
   final nowMs = DateTime.now().millisecondsSinceEpoch;

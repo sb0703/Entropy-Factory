@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'game_state.dart';
 import 'research_definitions.dart';
+import 'event_cards.dart';
 
 enum RunModifierTier { positive, negative, chaos }
 
@@ -166,6 +167,23 @@ ResearchEffects computeRunModifierEffects(GameState state) {
     }
   }
   return effects;
+}
+
+ResearchEffects computeEventEffects(GameState state) {
+  if (state.activeEventCardId == null) {
+    return ResearchEffects.base;
+  }
+  final card = eventCardById[state.activeEventCardId!];
+  if (card == null) {
+    return ResearchEffects.base;
+  }
+  // 过期则不生效
+  final nowMs = DateTime.now().millisecondsSinceEpoch;
+  if (state.activeEventExpiresAtMs > 0 &&
+      state.activeEventExpiresAtMs < nowMs) {
+    return ResearchEffects.base;
+  }
+  return card.effects;
 }
 
 List<String> rollRunModifiers(

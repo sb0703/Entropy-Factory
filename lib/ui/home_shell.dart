@@ -12,6 +12,7 @@ import 'package:flutter_game_test/ui/tabs/skill_tab.dart';
 import 'package:flutter_game_test/ui/widgets/resource_bar.dart';
 import 'package:flutter_game_test/ui/widgets/skill_quick_bar.dart';
 import 'package:flutter_game_test/ui/widgets/space_background.dart';
+import 'package:flutter_game_test/ui/widgets/daily_panel.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -101,6 +102,7 @@ class _HomeShellState extends State<HomeShell> {
               body: SafeArea(
                 child: Column(
                   children: [
+                    const DailyPanel(),
                     const ResourceBar(),
                     const SkillQuickBar(),
                     Expanded(

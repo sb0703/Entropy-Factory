@@ -16,6 +16,8 @@ import 'prestige_rules.dart';
 import 'research_definitions.dart';
 import 'run_modifiers.dart';
 import 'skill_definitions.dart';
+import 'daily_tasks.dart';
+import 'event_cards.dart';
 import '../services/save_service.dart';
 
 part 'game_controller_layout.dart';
@@ -124,7 +126,8 @@ class GameController extends StateNotifier<GameState> {
     var blueprints = _simState.resource(ResourceType.blueprint);
     var laws = _simState.resource(ResourceType.law);
 
-    shards = shards + BigNumber.fromDouble(shardProd * effectiveDt);
+    final shardDelta = shardProd * effectiveDt;
+    shards = shards + BigNumber.fromDouble(shardDelta);
 
     var shardConvertible = math.min(
       shardConvertCap * effectiveDt,
@@ -141,12 +144,10 @@ class GameController extends StateNotifier<GameState> {
 
     shardConvertible = math.min(shardConvertible, shards.toDouble());
     shards = shards - BigNumber.fromDouble(shardConvertible);
-    parts = parts +
-        BigNumber.fromDouble(
-          shardConvertible /
-              shardsPerPart *
-              effects.shardToPartEfficiencyMultiplier,
-        );
+    final partDelta = shardConvertible /
+        shardsPerPart *
+        effects.shardToPartEfficiencyMultiplier;
+    parts = parts + BigNumber.fromDouble(partDelta);
 
     final energyAvailable = energyProd * energySplit * effectiveDt;
     final energyNeeded = energyNeed * effectiveDt;
@@ -157,18 +158,18 @@ class GameController extends StateNotifier<GameState> {
     var partsConvertible = partSynthesisCap * efficiency * effectiveDt;
     partsConvertible = math.min(partsConvertible, parts.toDouble());
     parts = parts - BigNumber.fromDouble(partsConvertible);
-    blueprints = blueprints +
-        BigNumber.fromDouble(
-          partsConvertible /
-              partsPerBlueprint *
-              effects.blueprintProductionMultiplier,
-        );
+    final blueprintDelta = partsConvertible /
+        partsPerBlueprint *
+        effects.blueprintProductionMultiplier;
+    blueprints = blueprints + BigNumber.fromDouble(blueprintDelta);
 
     final lawGain = lawsFromBlueprints(blueprints);
     if (lawGain > BigNumber.zero) {
       blueprints = blueprints - lawGain.timesDouble(lawThreshold);
       laws = laws + lawGain;
     }
+
+    _addDailyGains(shardDelta, blueprintDelta);
 
     var nextState = _simState.copyWith(
       resources: {
@@ -200,6 +201,8 @@ class GameController extends StateNotifier<GameState> {
       _lastUiSyncMs = DateTime.now().millisecondsSinceEpoch;
     }
 
+    _ensureDailyRewardAndEvent();
+
     final lastSeenMs = await _saveService.loadLastSeenMs();
     if (lastSeenMs != null) {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -219,6 +222,103 @@ class GameController extends StateNotifier<GameState> {
     _saveTimer ??= Timer.periodic(const Duration(seconds: 5), (_) => _save());
   }
 
+  void _ensureDailyRewardAndEvent() {
+    final now = DateTime.now();
+    final last = DateTime.fromMillisecondsSinceEpoch(_simState.lastDailyClaimMs,
+        isUtc: false);
+    if (_simState.lastDailyClaimMs != 0 && _isSameDay(now, last)) {
+      return;
+    }
+    // daily reward: shards/parts/blueprints small bundle
+    final rewardShard = BigNumber.fromDouble(50000);
+    final rewardPart = BigNumber.fromDouble(5000);
+    final rewardBlueprint = BigNumber.fromDouble(200);
+    final resources = Map<ResourceType, BigNumber>.from(_simState.resources);
+    resources[ResourceType.shard] =
+        (resources[ResourceType.shard] ?? BigNumber.zero) + rewardShard;
+    resources[ResourceType.part] =
+        (resources[ResourceType.part] ?? BigNumber.zero) + rewardPart;
+    resources[ResourceType.blueprint] =
+        (resources[ResourceType.blueprint] ?? BigNumber.zero) + rewardBlueprint;
+
+    final event = _pickEventCard();
+    final expires =
+        DateTime(now.year, now.month, now.day, 23, 59, 59).millisecondsSinceEpoch;
+
+    _commitState(
+      _simState.copyWith(
+        resources: resources,
+        dailyShardGain: 0,
+        dailyBlueprintGain: 0,
+        dailyResearchCompleted: 0,
+        dailyTasksClaimed: const {},
+        lastDailyClaimMs: now.millisecondsSinceEpoch,
+        activeEventCardId: event.id,
+        activeEventExpiresAtMs: expires,
+      ).addLogEntry(
+            '每日奖励',
+            '领取每日奖励：碎片 +${_formatNumber(rewardShard)}，零件 +${_formatNumber(rewardPart)}，蓝图 +${_formatNumber(rewardBlueprint)}；今日事件卡：${event.title}',
+          ),
+    );
+  }
+
+  EventCard _pickEventCard() {
+    final random = math.Random(DateTime.now().millisecondsSinceEpoch);
+    return eventCards[random.nextInt(eventCards.length)];
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  void _addDailyGains(double shardDelta, double blueprintDelta) {
+    if (shardDelta <= 0 && blueprintDelta <= 0) return;
+    _simState = _simState.copyWith(
+      dailyShardGain: _simState.dailyShardGain + math.max(0, shardDelta),
+      dailyBlueprintGain:
+          _simState.dailyBlueprintGain + math.max(0, blueprintDelta),
+    );
+  }
+
+  bool claimDailyTask(String taskId) {
+    final def = dailyTaskDefinitions.firstWhere(
+      (t) => t.id == taskId,
+      orElse: () => const DailyTaskDefinition(
+        id: '',
+        title: '',
+        description: '',
+        type: DailyTaskType.shardGain,
+        goal: 0,
+        rewardType: ResourceType.shard,
+        rewardAmount: 0,
+      ),
+    );
+    if (def.id.isEmpty) return false;
+    if (_simState.dailyTasksClaimed.contains(def.id)) return false;
+    final statuses = buildDailyTaskStatus(_simState);
+    DailyTaskStatus? status;
+    for (final s in statuses) {
+      if (s.def.id == def.id) {
+        status = s;
+        break;
+      }
+    }
+    if (status == null || !status.completed) return false;
+
+    final reward = BigNumber.fromDouble(def.rewardAmount);
+    final resources = Map<ResourceType, BigNumber>.from(_simState.resources);
+    resources[def.rewardType] =
+        (resources[def.rewardType] ?? BigNumber.zero) + reward;
+
+    _commitState(
+      _simState.copyWith(
+        resources: resources,
+        dailyTasksClaimed: {..._simState.dailyTasksClaimed, def.id},
+      ).addLogEntry('每日任务', '领取 ${def.title} 奖励'),
+    );
+    return true;
+  }
+
   void _recordOfflineGain(
     Map<ResourceType, BigNumber> before,
     double offlineSeconds,
@@ -232,6 +332,10 @@ class GameController extends StateNotifier<GameState> {
     final gainedBlueprint =
         _simState.resource(ResourceType.blueprint) -
         (before[ResourceType.blueprint] ?? BigNumber.zero);
+    _addDailyGains(
+      gainedShard.toDouble(),
+      gainedBlueprint.toDouble(),
+    );
 
     final parts = <String>[];
     if (gainedShard > BigNumber.zero) {
@@ -352,6 +456,7 @@ class GameController extends StateNotifier<GameState> {
           ResourceType.blueprint: currency - cost,
         },
         researchPurchased: updatedResearch,
+        dailyResearchCompleted: _simState.dailyResearchCompleted + 1,
       ),
     );
 

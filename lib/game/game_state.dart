@@ -49,6 +49,13 @@ class GameState {
     required this.overclockEndsAtMs,
     required this.overclockCooldownEndsAtMs,
     required this.overclockLevel,
+    required this.dailyShardGain,
+    required this.dailyBlueprintGain,
+    required this.dailyResearchCompleted,
+    required this.dailyTasksClaimed,
+    required this.lastDailyClaimMs,
+    required this.activeEventCardId,
+    required this.activeEventExpiresAtMs,
   });
 
   final Map<ResourceType, BigNumber> resources;
@@ -108,6 +115,27 @@ class GameState {
   final int overclockCooldownEndsAtMs;
 
   final int overclockLevel;
+
+  /// 每日累计：碎片获取
+  final double dailyShardGain;
+
+  /// 每日累计：蓝图获取
+  final double dailyBlueprintGain;
+
+  /// 每日完成研究数量
+  final int dailyResearchCompleted;
+
+  /// 已领取的每日任务 ID
+  final Set<String> dailyTasksClaimed;
+
+  /// 上次每日奖励领取时间（毫秒时间戳，按自然日判断）
+  final int lastDailyClaimMs;
+
+  /// 当前激活的事件卡 ID（每日登陆随机）
+  final String? activeEventCardId;
+
+  /// 事件卡过期时间（毫秒时间戳）
+  final int activeEventExpiresAtMs;
 
   BigNumber resource(ResourceType type) => resources[type] ?? BigNumber.zero;
 
@@ -199,6 +227,13 @@ class GameState {
     int? overclockEndsAtMs,
     int? overclockCooldownEndsAtMs,
     int? overclockLevel,
+    double? dailyShardGain,
+    double? dailyBlueprintGain,
+    int? dailyResearchCompleted,
+    Set<String>? dailyTasksClaimed,
+    int? lastDailyClaimMs,
+    String? activeEventCardId,
+    int? activeEventExpiresAtMs,
   }) {
     return GameState(
       resources: resources ?? this.resources,
@@ -232,6 +267,15 @@ class GameState {
       overclockCooldownEndsAtMs:
           overclockCooldownEndsAtMs ?? this.overclockCooldownEndsAtMs,
       overclockLevel: overclockLevel ?? this.overclockLevel,
+      dailyShardGain: dailyShardGain ?? this.dailyShardGain,
+      dailyBlueprintGain: dailyBlueprintGain ?? this.dailyBlueprintGain,
+      dailyResearchCompleted:
+          dailyResearchCompleted ?? this.dailyResearchCompleted,
+      dailyTasksClaimed: dailyTasksClaimed ?? this.dailyTasksClaimed,
+      lastDailyClaimMs: lastDailyClaimMs ?? this.lastDailyClaimMs,
+      activeEventCardId: activeEventCardId ?? this.activeEventCardId,
+      activeEventExpiresAtMs:
+          activeEventExpiresAtMs ?? this.activeEventExpiresAtMs,
     );
   }
 
@@ -287,6 +331,13 @@ class GameState {
       'overclockEndsAtMs': overclockEndsAtMs,
       'overclockCooldownEndsAtMs': overclockCooldownEndsAtMs,
       'overclockLevel': overclockLevel,
+      'dailyShardGain': dailyShardGain,
+      'dailyBlueprintGain': dailyBlueprintGain,
+      'dailyResearchCompleted': dailyResearchCompleted,
+      'dailyTasksClaimed': dailyTasksClaimed.toList(),
+      'lastDailyClaimMs': lastDailyClaimMs,
+      'activeEventCardId': activeEventCardId,
+      'activeEventExpiresAtMs': activeEventExpiresAtMs,
     };
   }
 
@@ -473,6 +524,26 @@ class GameState {
       overclockLevel:
           (json['overclockLevel'] as num?)?.toInt() ??
               defaults.overclockLevel,
+      dailyShardGain:
+          (json['dailyShardGain'] as num?)?.toDouble() ??
+              defaults.dailyShardGain,
+      dailyBlueprintGain:
+          (json['dailyBlueprintGain'] as num?)?.toDouble() ??
+              defaults.dailyBlueprintGain,
+      dailyResearchCompleted:
+          (json['dailyResearchCompleted'] as num?)?.toInt() ??
+              defaults.dailyResearchCompleted,
+      dailyTasksClaimed: json['dailyTasksClaimed'] is List
+          ? {
+              for (final e in (json['dailyTasksClaimed'] as List)) e.toString(),
+            }
+          : defaults.dailyTasksClaimed,
+      lastDailyClaimMs:
+          (json['lastDailyClaimMs'] as num?)?.toInt() ?? defaults.lastDailyClaimMs,
+      activeEventCardId: json['activeEventCardId'] as String?,
+      activeEventExpiresAtMs:
+          (json['activeEventExpiresAtMs'] as num?)?.toInt() ??
+              defaults.activeEventExpiresAtMs,
     );
   }
 
@@ -527,6 +598,13 @@ class GameState {
       overclockEndsAtMs: 0,
       overclockCooldownEndsAtMs: 0,
       overclockLevel: 0,
+      dailyShardGain: 0,
+      dailyBlueprintGain: 0,
+      dailyResearchCompleted: 0,
+      dailyTasksClaimed: const <String>{},
+      lastDailyClaimMs: 0,
+      activeEventCardId: null,
+      activeEventExpiresAtMs: 0,
     );
   }
 }
